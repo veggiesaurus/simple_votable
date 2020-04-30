@@ -24,12 +24,12 @@ int main(int argc, char* argv[]) {
 
         Column* ra_column = table.GetColumn(column_to_sum);
         if (ra_column) {
-            auto float_column = dynamic_cast<FloatColumn*>(ra_column);
+            auto float_column = dynamic_cast<NumericColumn<float>*>(ra_column);
             if (float_column) {
                 double sum = accumulate(float_column->entries.begin(), float_column->entries.end(), 0.0);
                 fmt::print("Mean of column \"{}\": {} {}\n", column_to_sum, sum / table.NumRows(), ra_column->unit);
             } else {
-                auto double_column = dynamic_cast<DoubleColumn*>(ra_column);
+                auto double_column = dynamic_cast<NumericColumn<double>*>(ra_column);
                 if (double_column) {
                     double sum = accumulate(double_column->entries.begin(), double_column->entries.end(), 0.0);
                     fmt::print("Mean of column \"{}\": {} {}\n", column_to_sum, sum / table.NumRows(), ra_column->unit);

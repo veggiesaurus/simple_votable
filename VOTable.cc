@@ -72,17 +72,17 @@ bool VOTable::PopulateFields(const pugi::xml_node& table_node) {
             column = new StringColumn(name);
         } else if (!array_size_string.empty()) {
             // Can't support array-based column types other than char
-            column = new DummyColumn(name, fmt::format("{} [{}]", type_string, array_size_string));
+            column = new UnsupportedColumn(name, fmt::format("{} [{}]", type_string, array_size_string));
         } else if (type_string == "int" || type_string == "short" || type_string == "unsignedByte") {
-            column = new IntColumn(name);
+            column = new NumericColumn<int>(name);
         } else if (type_string == "long") {
-            column = new LongColumn(name);
+            column = new NumericColumn<long>(name);
         } else if (type_string == "float") {
-            column = new FloatColumn(name);
+            column = new NumericColumn<float>(name);
         } else if (type_string == "double") {
-            column = new DoubleColumn(name);
+            column = new NumericColumn<double>(name);
         } else {
-            column = new DummyColumn(name, type_string);
+            column = new UnsupportedColumn(name, type_string);
         }
 
         column->description = field.attribute("description").as_string();
@@ -132,7 +132,7 @@ bool VOTable::IsValid() const {
 void VOTable::PrintInfo(bool skip_unknowns) {
     fmt::print("Rows: {}; Columns: {};\n", _num_rows, _columns.size());
     for (auto column: _columns) {
-        if (!skip_unknowns || column->data_type != UNKNOWN) {
+        if (!skip_unknowns || column->data_type != UNSUPPORTED) {
             fmt::print(column->Info());
         }
     }
@@ -164,4 +164,3 @@ VOTable::~VOTable() {
         delete column;
     }
 }
-
