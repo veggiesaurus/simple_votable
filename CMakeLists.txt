@@ -10,5 +10,5 @@ project(votable_test)
 
 set(CMAKE_CXX_STANDARD 14)
 set(LINK_LIBS pugixml fmt)
-add_executable(votable_test main.cpp VOTable.cc VOTable.h Columns.h Columns.cc)
+add_executable(votable_test main.cpp Table.cc Table.h Columns.h Columns.cc)
 target_link_libraries(votable_test ${LINK_LIBS})

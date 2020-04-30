@@ -1,20 +1,63 @@
 #include "Columns.h"
+namespace carta {
+using namespace std;
 
-std::string Column::Info() {
-    auto type_string = data_type == UNSUPPORTED ? fmt::format("{} (unsupported)", _data_type_string) : _data_type_string;
+Column* Column::FromField(const pugi::xml_node& field) {
+    auto data_type = field.attribute("datatype");
+    string name = field.attribute("name").as_string();
+    string array_size_string = field.attribute("arraysize").as_string();
+    string type_string = data_type.as_string();
+
+    Column* column;
+
+    if (type_string == "char") {
+        column = new StringColumn(name);
+    } else if (!array_size_string.empty()) {
+        // Can't support array-based column types other than char
+        column = new UnsupportedColumn(name);
+    } else if (type_string == "int" || type_string == "short" || type_string == "unsignedByte") {
+        column = new NumericColumn<int>(name);
+    } else if (type_string == "long") {
+        column = new NumericColumn<long>(name);
+    } else if (type_string == "float") {
+        column = new NumericColumn<float>(name);
+    } else if (type_string == "double") {
+        column = new NumericColumn<double>(name);
+    } else {
+        column = new UnsupportedColumn(name);
+    }
+
+    if (!array_size_string.empty()) {
+        column->data_type_string = fmt::format("{}[{}]", type_string, array_size_string);
+    } else {
+        column->data_type_string = type_string;
+    }
+
+    column->id = field.attribute("ID").as_string();
+    column->description = field.attribute("description").as_string();
+    column->unit = field.attribute("unit").as_string();
+    column->ucd = field.attribute("ucd").as_string();
+    return column;
+}
+
+#pragma region StringColumn
+
+string Column::Info() {
+    auto type_string = data_type == UNSUPPORTED ? fmt::format("{} (unsupported)", data_type_string) : data_type_string;
     auto unit_string = unit.empty() ? "" : fmt::format("Unit: {}; ", unit);
     auto description_string = description.empty() ? "" : fmt::format("Description: {}; ", description);
     return fmt::format("Name: {}; Type: {}; {}{}\n", name, type_string, unit_string, description_string);
 }
 
-StringColumn::StringColumn(const std::string& name_chr) {
+StringColumn::StringColumn(const string& name_chr) {
     name = name_chr;
     data_type = STRING;
-    _data_type_string = "string";
 }
+
 void StringColumn::Reserve(size_t capacity) {
     entries.reserve(capacity);
 }
+
 void StringColumn::FillFromText(const pugi::xml_text& text) {
     if (!text.empty()) {
         entries.emplace_back(text.as_string());
@@ -22,19 +65,30 @@ void StringColumn::FillFromText(const pugi::xml_text& text) {
         FillEmpty();
     }
 }
+
 void StringColumn::FillEmpty() {
     entries.emplace_back("");
 }
 
-UnsupportedColumn::UnsupportedColumn(const std::string& name_chr, const std::string& type_chr) {
+#pragma endregion
+
+#pragma region UnsupportedColumn
+
+UnsupportedColumn::UnsupportedColumn(const string& name_chr) {
     name = name_chr;
     data_type = UNSUPPORTED;
-    _data_type_string = type_chr;
 }
+
 void UnsupportedColumn::Reserve(size_t capacity) {
 }
+
 void UnsupportedColumn::FillFromText(const pugi::xml_text&) {
 }
+
 void UnsupportedColumn::FillEmpty() {
+
+}
+
+#pragma endregion
 
 }

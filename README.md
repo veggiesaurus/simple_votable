@@ -3,4 +3,4 @@ This is an example implementation of a VOTable parser. It uses pugixml (Debian p
 After building the table, it calculates the average value of a specified column. Note that this column must have a `datatype` of `double` or `float`. 
 
 To run, pass in arguments as follows:
-`votable_test <name of VOTable file> <column name>`
+`votable_test <name of VOTable file> <column name> <headeronly?>`
