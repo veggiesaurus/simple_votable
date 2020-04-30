@@ -2,8 +2,8 @@
 
 std::string Column::Info() {
     auto type_string = data_type == UNKNOWN ? fmt::format("{} (unsupported)", _data_type_string) : _data_type_string;
-    auto unit_string = unit.empty() ? "": fmt::format("Unit: {}; ", unit);
-    auto description_string = description.empty() ? "": fmt::format("Description: {}; ", description);
+    auto unit_string = unit.empty() ? "" : fmt::format("Unit: {}; ", unit);
+    auto description_string = description.empty() ? "" : fmt::format("Description: {}; ", description);
     return fmt::format("Name: {}; Type: {}; {}{}\n", name, type_string, unit_string, description_string);
 }
 
