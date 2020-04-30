@@ -27,6 +27,8 @@ public:
     virtual void Reserve(size_t capacity) = 0;
     virtual std::string Info();
     virtual ~Column() = default;
+    virtual Column* Clone() = 0;
+    virtual void Append(Column*) = 0;
 
     // Factory for constructing a column from a <FIELD> node
     static Column* FromField(const pugi::xml_node& field);
@@ -49,6 +51,22 @@ public:
     void Reserve(size_t capacity) override;
     void FillFromText(const pugi::xml_text& text) override;
     void FillEmpty() override;
+    void Append(Column* column) override {
+        auto string_col = dynamic_cast<StringColumn*>(column);
+        if (string_col) {
+            entries.reserve(entries.size() + string_col->entries.size());
+            entries.insert(entries.end(), string_col->entries.begin(), string_col->entries.end());
+            string_col->entries.clear();
+        }
+    }
+    Column* Clone() override {
+        auto rhs = new StringColumn(name);
+        rhs->id = id;
+        rhs->unit = unit;
+        rhs->description = description;
+        rhs->data_type_string = data_type_string;
+        return rhs;
+    }
 };
 
 class UnsupportedColumn : public Column {
@@ -58,6 +76,15 @@ public:
     void Reserve(size_t capacity) override;
     void FillFromText(const pugi::xml_text&) override;
     void FillEmpty() override;
+    void Append(Column*) override {};
+    Column* Clone() override {
+        auto rhs = new UnsupportedColumn(name);
+        rhs->id = id;
+        rhs->unit = unit;
+        rhs->description = description;
+        rhs->data_type_string = data_type_string;
+        return rhs;
+    }
 };
 
 template<class T>
@@ -69,6 +96,22 @@ public:
     void Reserve(size_t capacity) override;
     void FillFromText(const pugi::xml_text& text) override;
     void FillEmpty() override;
+    void Append(Column* column) override {
+        auto numeric_col = dynamic_cast<NumericColumn<T>*>(column);
+        if (numeric_col) {
+            entries.reserve(entries.size() + numeric_col->entries.size());
+            entries.insert(entries.end(), numeric_col->entries.begin(), numeric_col->entries.end());
+            numeric_col->entries.clear();
+        }
+    }
+    Column* Clone() override {
+        auto rhs = new NumericColumn<T>(name);
+        rhs->id = id;
+        rhs->unit = unit;
+        rhs->description = description;
+        rhs->data_type_string = data_type_string;
+        return rhs;
+    }
 };
 
 }

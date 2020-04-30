@@ -60,7 +60,7 @@ void StringColumn::Reserve(size_t capacity) {
 
 void StringColumn::FillFromText(const pugi::xml_text& text) {
     if (!text.empty()) {
-        entries.emplace_back(text.as_string());
+        entries.emplace_back(text.get());
     } else {
         FillEmpty();
     }

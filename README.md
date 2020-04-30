@@ -5,3 +5,5 @@ To run, pass in arguments as follows:
 
 
 After building the table, it calculates the average value of a specified column. Note that this column must have a `datatype` of `double` or `float`. If any argument is passed in the `headeronly` field, only the first 64 kB of the table are read, and this is used to construct the header itself, rather than reading the entire table.
+
+OpenMP can be used to parallelize the the in-memory table creating by enabling the `#define` `PARALLEL_FILL` in `Table.cc`

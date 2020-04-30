@@ -1,7 +1,10 @@
 #include <fstream>
 #include <iostream>
 #include <fmt/format.h>
+#include <omp.h>
 #include "Table.h"
+
+#define PARALLEL_FILL
 
 namespace carta {
 using namespace std;
@@ -123,6 +126,50 @@ bool Table::PopulateRows(const pugi::xml_node& table_node) {
 
     // VOTable standard specifies TABLEDATA element contains only TR children, which contain only TD children
     auto row_nodes = table_data.children();
+
+#ifdef PARALLEL_FILL
+    std::vector<pugi::xml_node> rows;
+    for (auto& row : row_nodes) {
+        rows.push_back(row);
+    }
+
+    _num_rows = rows.size();
+
+#pragma omp parallel default(none) shared(_num_rows, rows)
+    {
+        vector<Column*> copy;
+        for (auto col: _columns) {
+            copy.push_back(col->Clone());
+        }
+
+#pragma omp for
+        for (auto i = 0; i < _num_rows; i++) {
+            auto& row = rows[i];
+            auto column_iterator = copy.begin();
+            auto column_nodes = row.children();
+            for (auto& td: column_nodes) {
+                if (column_iterator == copy.end()) {
+                    break;
+                }
+                (*column_iterator)->FillFromText(td.text());
+                column_iterator++;
+            }
+
+            // Fill remaining / missing columns
+            while (column_iterator != copy.end()) {
+                (*column_iterator)->FillEmpty();
+                column_iterator++;
+            }
+        }
+#pragma omp critical
+        {
+            for (auto i = 0; i < _columns.size(); i++) {
+                _columns[i]->Append(copy[i]);
+                delete copy[i];
+            }
+        };
+    }
+#else
     for (auto& row : row_nodes) {
         auto column_iterator = _columns.begin();
         auto column_nodes = row.children();
@@ -142,6 +189,7 @@ bool Table::PopulateRows(const pugi::xml_node& table_node) {
         }
         _num_rows++;
     }
+#endif
     return true;
 }
 
