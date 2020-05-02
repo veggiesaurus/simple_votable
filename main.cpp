@@ -20,8 +20,8 @@ int main(int argc, char* argv[]) {
     auto t_end = chrono::high_resolution_clock::now();
     double dt = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
     if (table.IsValid()) {
-        fmt::print("Read {} {} in {} ms\n", header_only ? "header of" : "table", filename, dt);
         table.PrintInfo(false);
+        fmt::print("Read {} {} in {} ms\n", header_only ? "header of" : "table", filename, dt);
 
         carta::Column* ra_column = table.GetColumn(column_to_sum);
         if (ra_column) {

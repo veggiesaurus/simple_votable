@@ -24,8 +24,8 @@ public:
     size_t NumRows();
 protected:
 
-    bool PopulateFields(const pugi::xml_node& table_node);
-    bool PopulateRows(const pugi::xml_node& table_node);
+    bool PopulateFields(const pugi::xml_node& table);
+    bool PopulateRows(const pugi::xml_node& table);
 
     bool _valid;
     int64_t _num_rows;

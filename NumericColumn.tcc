@@ -17,8 +17,21 @@ NumericColumn<T>::NumericColumn(const std::string& name_chr) {
 }
 
 template<class T>
-void NumericColumn<T>::Reserve(size_t capacity) {
-    entries.reserve(capacity);
+void NumericColumn<T>::SetFromText(const pugi::xml_text& text, size_t index) {
+    if (data_type == FLOAT) {
+        entries[index] = text.as_float((float) std::numeric_limits<T>::quiet_NaN());
+    } else if (data_type == DOUBLE) {
+        entries[index] = (text.as_double((double) std::numeric_limits<T>::quiet_NaN()));
+    } else if (data_type == INT) {
+        entries[index] = text.as_int((int) std::numeric_limits<T>::quiet_NaN());
+    } else if (data_type == LONG) {
+        entries[index] = text.as_llong((int64_t) std::numeric_limits<T>::quiet_NaN());
+    }
+}
+
+template<class T>
+void NumericColumn<T>::SetEmpty(size_t index) {
+    entries[index] = std::numeric_limits<T>::quiet_NaN();
 }
 
 template<class T>
@@ -37,6 +50,16 @@ void NumericColumn<T>::FillFromText(const pugi::xml_text& text) {
 template<class T>
 void NumericColumn<T>::FillEmpty() {
     entries.emplace_back(std::numeric_limits<T>::quiet_NaN());
+}
+
+template<class T>
+void NumericColumn<T>::Resize(size_t capacity) {
+    entries.resize(capacity);
+}
+
+template<class T>
+void NumericColumn<T>::Reserve(size_t capacity) {
+    entries.reserve(capacity);
 }
 
 }

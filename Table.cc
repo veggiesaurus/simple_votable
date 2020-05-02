@@ -1,7 +1,6 @@
 #include <fstream>
 #include <iostream>
 #include <fmt/format.h>
-#include <omp.h>
 #include "Table.h"
 
 #define PARALLEL_FILL
@@ -64,14 +63,6 @@ Table::Table(const string& filename, bool header_only)
         return;
     }
 
-    // Reserve capacity for the appropriate number of rows
-    size_t expected_num_rows = table.attribute("nrows").as_ullong();
-    if (expected_num_rows > 0) {
-        for (auto column: _columns) {
-            column->Reserve(expected_num_rows);
-        }
-    }
-
     if (!PopulateRows(table)) {
         _valid = false;
         return;
@@ -98,12 +89,12 @@ string Table::GetHeader(const string& filename) const {
     return header_string;
 }
 
-bool Table::PopulateFields(const pugi::xml_node& table_node) {
-    if (!table_node) {
+bool Table::PopulateFields(const pugi::xml_node& table) {
+    if (!table) {
         return false;
     }
 
-    for (auto& field: table_node.children("FIELD")) {
+    for (auto& field: table.children("FIELD")) {
         Column* column = Column::FromField(field);
         _columns.push_back(column);
         if (!column->name.empty()) {
@@ -116,10 +107,9 @@ bool Table::PopulateFields(const pugi::xml_node& table_node) {
 
     return !_columns.empty();
 }
-bool Table::PopulateRows(const pugi::xml_node& table_node) {
-    auto data = table_node.child("DATA");
+bool Table::PopulateRows(const pugi::xml_node& table) {
+    auto data = table.child("DATA");
     auto table_data = data.child("TABLEDATA");
-
     if (!table_data) {
         return false;
     }
@@ -134,42 +124,41 @@ bool Table::PopulateRows(const pugi::xml_node& table_node) {
     }
 
     _num_rows = rows.size();
+    for (auto column: _columns) {
+        column->Resize(_num_rows);
+    }
 
 #pragma omp parallel default(none) shared(_num_rows, rows)
     {
-        vector<Column*> copy;
-        for (auto col: _columns) {
-            copy.push_back(col->Clone());
-        }
-
-#pragma omp for
+#pragma omp for schedule(static)
         for (auto i = 0; i < _num_rows; i++) {
             auto& row = rows[i];
-            auto column_iterator = copy.begin();
+            auto column_iterator = _columns.begin();
             auto column_nodes = row.children();
             for (auto& td: column_nodes) {
-                if (column_iterator == copy.end()) {
+                if (column_iterator == _columns.end()) {
                     break;
                 }
-                (*column_iterator)->FillFromText(td.text());
+                (*column_iterator)->SetFromText(td.text(), i);
                 column_iterator++;
             }
 
             // Fill remaining / missing columns
-            while (column_iterator != copy.end()) {
-                (*column_iterator)->FillEmpty();
+            while (column_iterator != _columns.end()) {
+                (*column_iterator)->SetEmpty(i);
                 column_iterator++;
             }
         }
-#pragma omp critical
-        {
-            for (auto i = 0; i < _columns.size(); i++) {
-                _columns[i]->Append(copy[i]);
-                delete copy[i];
-            }
-        };
     }
 #else
+    // Reserve capacity for the appropriate number of rows if it is specified
+    size_t expected_num_rows = table.attribute("nrows").as_ullong();
+    if (expected_num_rows > 0) {
+        for (auto column: _columns) {
+            column->Reserve(expected_num_rows);
+        }
+    }
+
     for (auto& row : row_nodes) {
         auto column_iterator = _columns.begin();
         auto column_nodes = row.children();

@@ -1,4 +1,5 @@
 #include "Columns.h"
+
 namespace carta {
 using namespace std;
 
@@ -54,8 +55,16 @@ StringColumn::StringColumn(const string& name_chr) {
     data_type = STRING;
 }
 
-void StringColumn::Reserve(size_t capacity) {
-    entries.reserve(capacity);
+void StringColumn::SetFromText(const pugi::xml_text& text, size_t index) {
+    if (!text.empty()) {
+        entries[index] = text.get();
+    } else {
+        SetEmpty(index);
+    }
+}
+
+void StringColumn::SetEmpty(size_t index) {
+    entries[index] = "";
 }
 
 void StringColumn::FillFromText(const pugi::xml_text& text) {
@@ -70,6 +79,14 @@ void StringColumn::FillEmpty() {
     entries.emplace_back("");
 }
 
+void StringColumn::Resize(size_t capacity) {
+    entries.resize(capacity);
+}
+
+void StringColumn::Reserve(size_t capacity) {
+    entries.reserve(capacity);
+}
+
 #pragma endregion
 
 #pragma region UnsupportedColumn
@@ -79,14 +96,22 @@ UnsupportedColumn::UnsupportedColumn(const string& name_chr) {
     data_type = UNSUPPORTED;
 }
 
+void UnsupportedColumn::Resize(size_t capacity) {
+}
+
 void UnsupportedColumn::Reserve(size_t capacity) {
 }
 
-void UnsupportedColumn::FillFromText(const pugi::xml_text&) {
+void UnsupportedColumn::SetFromText(const pugi::xml_text&, size_t) {
+}
+
+void UnsupportedColumn::SetEmpty(std::size_t) {
+}
+
+void UnsupportedColumn::FillFromText(const pugi::xml_text& text) {
 }
 
 void UnsupportedColumn::FillEmpty() {
-
 }
 
 #pragma endregion
