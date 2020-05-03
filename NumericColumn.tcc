@@ -62,6 +62,28 @@ void NumericColumn<T>::Reserve(size_t capacity) {
     entries.reserve(capacity);
 }
 
+template<class T>
+std::vector<int64_t> NumericColumn<T>::FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) {
+    std::vector<int64_t> matching_indices;
+
+    if (start_index < 0 || start_index >= entries.size()) {
+        start_index = 0;
+    }
+
+    if (end_index < 0 || end_index >= entries.size()) {
+        end_index = entries.size() - 1;
+    }
+
+    for (auto i = start_index; i < end_index; i++) {
+        T val = entries[i];
+        if (val >= min_value && val <= max_value) {
+            matching_indices.push_back(i);
+        }
+    }
+
+    return matching_indices;
+}
+
 }
 
 #endif //VOTABLE_TEST__NUMERICCOLUMN_TCC_

@@ -29,6 +29,8 @@ public:
     virtual void Resize(size_t capacity) = 0;
     virtual void Reserve(size_t capacity) = 0;
     virtual std::string Info();
+    virtual std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) = 0;
+    std::vector<int64_t> FilterRange(double min_value, double max_value) { return FilterRange(min_value, max_value, -1, -1); }
     virtual ~Column() = default;
 
     // Factory for constructing a column from a <FIELD> node
@@ -55,6 +57,7 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
+    std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
 };
 
 class UnsupportedColumn : public Column {
@@ -67,6 +70,7 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
+    std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
 };
 
 template<class T>
@@ -81,6 +85,7 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
+    std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
 };
 }
 

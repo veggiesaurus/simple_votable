@@ -86,6 +86,9 @@ void StringColumn::Resize(size_t capacity) {
 void StringColumn::Reserve(size_t capacity) {
     entries.reserve(capacity);
 }
+std::vector<int64_t> StringColumn::FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) {
+    return std::vector<int64_t>();
+}
 
 #pragma endregion
 
@@ -112,6 +115,10 @@ void UnsupportedColumn::FillFromText(const pugi::xml_text& text) {
 }
 
 void UnsupportedColumn::FillEmpty() {
+}
+
+std::vector<int64_t> UnsupportedColumn::FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) {
+    return std::vector<int64_t>();
 }
 
 #pragma endregion

@@ -26,18 +26,27 @@ int main(int argc, char* argv[]) {
         carta::Column* ra_column = table.GetColumn(column_to_sum);
         if (ra_column) {
             auto float_column = dynamic_cast<carta::NumericColumn<float>*>(ra_column);
+            auto double_column = dynamic_cast<carta::NumericColumn<double>*>(ra_column);
+
+            double sum;
             if (float_column) {
-                double sum = accumulate(float_column->entries.begin(), float_column->entries.end(), 0.0);
-                fmt::print("Mean of column \"{}\": {} {}\n", column_to_sum, sum / table.NumRows(), ra_column->unit);
+                sum = accumulate(float_column->entries.begin(), float_column->entries.end(), 0.0);
+            } else if (double_column) {
+                sum = accumulate(double_column->entries.begin(), double_column->entries.end(), 0.0);
             } else {
-                auto double_column = dynamic_cast<carta::NumericColumn<double>*>(ra_column);
-                if (double_column) {
-                    double sum = accumulate(double_column->entries.begin(), double_column->entries.end(), 0.0);
-                    fmt::print("Mean of column \"{}\": {} {}\n", column_to_sum, sum / table.NumRows(), ra_column->unit);
-                } else {
-                    fmt::print("Column with name \"{}\" is not a floating-point type!\n", column_to_sum);
-                }
+                fmt::print("Column with name \"{}\" is not a floating-point type!\n", column_to_sum);
+                return 1;
             }
+
+            double mean = sum / table.NumRows();
+            fmt::print("Mean of column \"{}\": {} {}\n", column_to_sum, mean, ra_column->unit);
+
+            auto t_start_filter = chrono::high_resolution_clock::now();
+            auto num_matches = ra_column->FilterRange(mean, numeric_limits<float>::max()).size();
+            auto t_end_filter = chrono::high_resolution_clock::now();
+            double dt_filter = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_filter - t_start_filter).count();
+            fmt::print("{} entries with column \"{}\" >= {} matched in {} ms\n", num_matches, column_to_sum, mean, dt_filter);
+
         } else {
             fmt::print("Column with name \"{}\" not found!\n", column_to_sum);
         }
