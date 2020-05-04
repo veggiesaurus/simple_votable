@@ -5,53 +5,16 @@
 
 namespace carta {
 
-class Filter {
-public:
-    virtual std::vector<int64_t> Execute() = 0;
-    virtual bool IsValid() { return _valid; }
-protected:
-    bool _valid = false;
+typedef std::vector<int64_t> IndexList;
+enum LogicalOperator {
+    AND,
+    OR
 };
 
-class StringFilter : public Filter {
-public:
-    StringFilter(Column* column, const std::string& search_string, bool case_insensitive);
-    std::vector<int64_t> Execute() override;
-
-protected:
-    std::string _search_string;
-    bool _case_insensitive;
-    StringColumn* _column;
-};
-
-class NumericFilter : public Filter {
-public:
-    NumericFilter(Column* column, double min_value, double max_value);
-    std::vector<int64_t> Execute() override;
-
-protected:
-    double _min_value;
-    double _max_value;
-    Column* _column;
-    template<class T>
-    std::vector<int64_t> TemplatedExecute();
-};
-
-class LogicalFilter : public Filter {
-public:
-    enum LogicalOperator {
-        AND,
-        OR
-    };
-
-    LogicalFilter(LogicalOperator op, std::vector<Filter*> filters);
-    LogicalFilter(LogicalOperator op, std::initializer_list<Filter*> filters);
-    bool IsValid() override;
-    std::vector<int64_t> Execute() override;
-protected:
-    std::vector<Filter*> _filters;
-    LogicalOperator _operator;
-};
+IndexList StringFilter(Column* column, std::string search_string, bool case_insensitive);
+IndexList NumericFilter(Column* column, double min_value, double max_value);
+IndexList LogicalFilter(LogicalOperator op, const IndexList& A, const IndexList& B);
+IndexList InvertIndices(const IndexList& indices, int64_t total_row_count);
 
 }
 

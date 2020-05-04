@@ -63,21 +63,17 @@ int main(int argc, char* argv[]) {
             fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum2, mean2, second_column->unit);
 
             auto t_start_filter = chrono::high_resolution_clock::now();
-            auto first_matches = NumericFilter(first_column, mean, NAN).Execute();
-            auto second_matches = NumericFilter(second_column, mean2, NAN).Execute();
+            auto first_matches = NumericFilter(first_column, mean, NAN);
+            auto second_matches = NumericFilter(second_column, mean2, NAN);
 
             // Calculate set intersection to get indices of rows that pass EITHER filters
-            std::vector<int64_t> match_intersection = LogicalFilter(
-                LogicalFilter::AND, vector<Filter*>{{new NumericFilter(first_column, mean, NAN),
-                                                     new NumericFilter(second_column, mean2, NAN)}}).Execute();
+            std::vector<int64_t> match_intersection = LogicalFilter(AND, first_matches, second_matches);
             auto num_intersections = match_intersection.size();
 
-            std::vector<int64_t> match_union = LogicalFilter(
-                LogicalFilter::OR, vector<Filter*>{{new NumericFilter(first_column, mean, NAN),
-                                                     new NumericFilter(second_column, mean2, NAN)}}).Execute();
+            std::vector<int64_t> match_union = LogicalFilter(OR, first_matches, second_matches);
             auto num_unions = match_union.size();
 
-            std::vector<int64_t> match_not = Column::InvertIndices(match_union, table.NumRows());
+            std::vector<int64_t> match_not = InvertIndices(match_union, table.NumRows());
             auto num_inverted = match_not.size();
             auto t_end_filter = chrono::high_resolution_clock::now();
             double dt_filter = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_filter - t_start_filter).count();
@@ -105,10 +101,10 @@ int main(int argc, char* argv[]) {
             // Try to get a string column with name or ID "MAIN_ID"
             string string_name = "MAIN_ID";
             string test_string = "COSMOS";
-            auto string_column = dynamic_cast<StringColumn*>(table.GetColumn(string_name));
+            auto string_column = table.GetColumn(string_name);
             if (string_column) {
                 auto t_start_string = chrono::high_resolution_clock::now();
-                auto string_matched_indices = ((Column*) (string_column))->GetFilteredIndices(test_string, true);
+                auto string_matched_indices = StringFilter(string_column, test_string, true);
                 auto num_matches = string_matched_indices.size();
                 auto t_end_string = chrono::high_resolution_clock::now();
                 double dt_string = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_string - t_start_string).count();

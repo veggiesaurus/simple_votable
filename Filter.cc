@@ -1,41 +1,33 @@
 #include <string>
 #include <utility>
+#include <numeric>
 #include "Filter.h"
 
-using namespace carta;
+using namespace std;
 
-StringFilter::StringFilter(Column* column, const std::string& search_string, bool case_insensitive) :
-    _search_string(search_string),
-    _case_insensitive(case_insensitive) {
-    _column = dynamic_cast<StringColumn*>(column);
-    _valid = _column && _column->data_type == DataType::STRING;
-
-    if (_case_insensitive) {
-        std::transform(_search_string.begin(), _search_string.end(), _search_string.begin(), ::tolower);
+namespace carta {
+IndexList StringFilter(Column* column, string search_string, bool case_insensitive) {
+    auto string_column = dynamic_cast<StringColumn*>(column);
+    if (!string_column) {
+        return IndexList();
     }
-}
+    size_t num_entries = string_column->entries.size();
+    IndexList matching_indices;
 
-std::vector<int64_t> StringFilter::Execute() {
-    if (!_valid) {
-        return std::vector<int64_t>();
-    }
-
-    size_t num_entries = _column->entries.size();
-    std::vector<int64_t> matching_indices;
-
-    if (_case_insensitive) {
+    if (case_insensitive) {
         // If case-insensitive, must transform strings to lower-case while iterating
+        transform(search_string.begin(), search_string.end(), search_string.begin(), ::tolower);
         for (auto i = 0; i < num_entries; i++) {
-            auto val = _column->entries[i];
-            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-            if (val.find(_search_string) != std::string::npos) {
+            auto val = string_column->entries[i];
+            transform(val.begin(), val.end(), val.begin(), ::tolower);
+            if (val.find(search_string) != string::npos) {
                 matching_indices.push_back(i);
             }
         }
     } else {
         for (auto i = 0; i < num_entries; i++) {
-            auto& val = _column->entries[i];
-            if (val.find(_search_string) != std::string::npos) {
+            auto& val = string_column->entries[i];
+            if (val.find(search_string) != string::npos) {
                 matching_indices.push_back(i);
             }
         }
@@ -43,52 +35,25 @@ std::vector<int64_t> StringFilter::Execute() {
     return matching_indices;
 }
 
-NumericFilter::NumericFilter(carta::Column* column, double min_value, double max_value) :
-    _min_value(min_value), _max_value(max_value), _column(column) {
-    // Valid columns can be int, long, float or double
-    _valid = (dynamic_cast<NumericColumn<float>*>(column) && column->data_type == DataType::FLOAT)
-        || (dynamic_cast<NumericColumn<double>*>(column) && column->data_type == DataType::DOUBLE)
-        || (dynamic_cast<NumericColumn<int>*>(column) && column->data_type == DataType::INT)
-        || (dynamic_cast<NumericColumn<int64_t>*>(column) && column->data_type == DataType::LONG);
-
-    // at least one of min and max must be defined
-    _valid &= (std::isfinite(_max_value) || std::isfinite(_min_value));
-}
-
-std::vector<int64_t> NumericFilter::Execute() {
-    if (!_valid) {
-        return std::vector<int64_t>();
-    }
-
-    // Is this really the best way to do this?
-    switch (_column->data_type) {
-        case FLOAT: return TemplatedExecute<float>();
-        case DOUBLE: return TemplatedExecute<double>();
-        case INT: return TemplatedExecute<int>();
-        case LONG: return TemplatedExecute<long>();
-        default:return std::vector<int64_t>();
-    }
-}
-
 template<class T>
-std::vector<int64_t> NumericFilter::TemplatedExecute() {
-    std::vector<int64_t> matching_indices;
+IndexList NumericFilterTemplated(Column* column, double min_value, double max_value) {
+    IndexList matching_indices;
 
-    auto numeric_column = dynamic_cast<NumericColumn<T>*>(_column);
+    auto numeric_column = dynamic_cast<NumericColumn<T>*>(column);
     if (!numeric_column) {
         return matching_indices;
     }
 
     size_t num_entries = numeric_column->entries.size();
-    T typed_min = _min_value;
-    T typed_max = _max_value;
+    T typed_min = min_value;
+    T typed_max = max_value;
 
-    if (!std::isfinite(_min_value)) {
-        typed_min = std::numeric_limits<T>::lowest();
+    if (!isfinite(min_value)) {
+        typed_min = numeric_limits<T>::lowest();
     }
 
-    if (!std::isfinite(_max_value)) {
-        typed_max = std::numeric_limits<T>::max();
+    if (!isfinite(max_value)) {
+        typed_max = numeric_limits<T>::max();
     }
 
     for (auto i = 0; i < num_entries; i++) {
@@ -101,43 +66,59 @@ std::vector<int64_t> NumericFilter::TemplatedExecute() {
     return matching_indices;
 }
 
-LogicalFilter::LogicalFilter(LogicalOperator op, std::vector<Filter*> filters) :
-    _operator(op) {
-    _filters = std::move(filters);
-}
+IndexList NumericFilter(Column* column, double min_value, double max_value) {
+    if (!column) {
+        return IndexList();
+    }
 
-LogicalFilter::LogicalFilter(LogicalOperator op, std::initializer_list<Filter*> filters) :
-    _operator(op) {
-    for (auto& filter: filters) {
-        _filters.push_back(filter);
+    switch (column->data_type) {
+        case FLOAT: return NumericFilterTemplated<float>(column, min_value, max_value);
+        case DOUBLE: return NumericFilterTemplated<double>(column, min_value, max_value);
+        case INT: return NumericFilterTemplated<int>(column, min_value, max_value);
+        case LONG: return NumericFilterTemplated<long>(column, min_value, max_value);
+        default: return IndexList();
     }
 }
 
-bool LogicalFilter::IsValid() {
-    // Filter is only valid if all its dependents are valid
-    return !_filters.empty() && std::all_of(_filters.begin(), _filters.end(), [](Filter* f) {
-        return f && f->IsValid();
-    });
-}
-std::vector<int64_t> LogicalFilter::Execute() {
-    std::vector<int64_t> matching_indices;
-
-    if (!IsValid()) {
-        return matching_indices;
+IndexList LogicalFilter(LogicalOperator op, const IndexList& A, const IndexList& B) {
+    IndexList combined_indices;
+    if (op == AND) {
+        set_intersection(A.begin(), A.end(), B.begin(), B.end(), back_inserter(combined_indices));
+    } else {
+        set_union(A.begin(), A.end(), B.begin(), B.end(), back_inserter(combined_indices));
     }
+    return combined_indices;
+}
 
-    matching_indices = _filters[0]->Execute();
+IndexList InvertIndices(const IndexList& indices, int64_t total_row_count) {
+    IndexList inverted_indices;
+    auto inverted_row_count = total_row_count - indices.size();
 
-    for (auto i = 1; i < _filters.size(); i++) {
-        auto indices = _filters[i]->Execute();
-        std::vector<int64_t> combined_indices;
-        if (_operator == AND) {
-            std::set_intersection(matching_indices.begin(), matching_indices.end(), indices.begin(), indices.end(), std::back_inserter(combined_indices));
-        } else {
-            std::set_union(matching_indices.begin(), matching_indices.end(), indices.begin(), indices.end(), std::back_inserter(combined_indices));
+    // after inversion, all indices are included
+    if (indices.empty()) {
+        inverted_indices.resize(indices.size());
+        iota(inverted_indices.begin(), inverted_indices.end(), 0);
+    } else if (inverted_row_count > 0) {
+        inverted_indices.reserve(inverted_row_count);
+        auto it = indices.begin();
+        auto next_val = *it;
+        for (auto i = 0; i < total_row_count; i++) {
+            // index is in the existing set
+            if (i == next_val) {
+                it++;
+
+                if (it == indices.end()) {
+                    next_val = -1;
+                } else {
+                    next_val = *it;
+                }
+            } else {
+                inverted_indices.push_back(i);
+            }
         }
-        matching_indices.swap(combined_indices);
     }
 
-    return matching_indices;
+    return inverted_indices;
+}
+
 }
