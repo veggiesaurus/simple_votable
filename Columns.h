@@ -29,12 +29,17 @@ public:
     virtual void Resize(size_t capacity) = 0;
     virtual void Reserve(size_t capacity) = 0;
     virtual std::string Info();
-    virtual std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) = 0;
-    std::vector<int64_t> FilterRange(double min_value, double max_value) { return FilterRange(min_value, max_value, -1, -1); }
+    virtual std::vector<int64_t> GetFilteredIndices(double min_value, double max_value, int64_t start_index, int64_t end_index) = 0;
+    std::vector<int64_t> GetFilteredIndices(double min_value, double max_value) { return GetFilteredIndices(min_value, max_value, -1, -1); }
+    virtual std::vector<int64_t> GetFilteredIndices(std::string search_string, bool case_insensitive, int64_t start_index, int64_t end_index) = 0;
+    std::vector<int64_t> GetFilteredIndices(std::string search_string, bool case_insensitive) { return GetFilteredIndices(search_string, case_insensitive, -1, -1); }
     virtual ~Column() = default;
 
     // Factory for constructing a column from a <FIELD> node
     static Column* FromField(const pugi::xml_node& field);
+
+    // Inversion of filter matches
+    static std::vector<int64_t> InvertIndices(const std::vector<int64_t>& indices, int64_t total_row_count);
 
     DataType data_type;
     std::string name;
@@ -49,7 +54,7 @@ public:
 class StringColumn : public Column {
 public:
     std::vector<std::string> entries;
-    StringColumn(const std::string& name_chr);
+    explicit StringColumn(const std::string& name_chr);
     ~StringColumn() override = default;
     void SetFromText(const pugi::xml_text& text, size_t index) override;
     void SetEmpty(size_t index) override;
@@ -57,12 +62,13 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
-    std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
+    std::vector<int64_t> GetFilteredIndices(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
+    std::vector<int64_t> GetFilteredIndices(std::string search_string, bool case_insensitive, int64_t start_index, int64_t end_index) override;
 };
 
 class UnsupportedColumn : public Column {
 public:
-    UnsupportedColumn(const std::string& name_chr);
+    explicit UnsupportedColumn(const std::string& name_chr);
     ~UnsupportedColumn() override = default;
     void SetFromText(const pugi::xml_text&, size_t index) override;
     void SetEmpty(size_t index) override;
@@ -70,7 +76,8 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
-    std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
+    std::vector<int64_t> GetFilteredIndices(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
+    std::vector<int64_t> GetFilteredIndices(std::string search_string, bool case_insensitive, int64_t start_index, int64_t end_index) override;
 };
 
 template<class T>
@@ -85,7 +92,8 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
-    std::vector<int64_t> FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
+    std::vector<int64_t> GetFilteredIndices(double min_value, double max_value, int64_t start_index, int64_t end_index) override;
+    std::vector<int64_t> GetFilteredIndices(std::string search_string, bool case_insensitive, int64_t start_index, int64_t end_index) override;
 };
 }
 

@@ -1,3 +1,4 @@
+#include <numeric>
 #include "Columns.h"
 
 namespace carta {
@@ -39,6 +40,37 @@ Column* Column::FromField(const pugi::xml_node& field) {
     column->unit = field.attribute("unit").as_string();
     column->ucd = field.attribute("ucd").as_string();
     return column;
+}
+
+std::vector<int64_t> Column::InvertIndices(const vector<int64_t>& indices, int64_t total_row_count) {
+    vector<int64_t> inverted_indices;
+    auto inverted_row_count = total_row_count - indices.size();
+
+    // after inversion, all indices are included
+    if (indices.empty()) {
+        inverted_indices.resize(indices.size());
+        std::iota(inverted_indices.begin(), inverted_indices.end(), 0);
+    } else if (inverted_row_count > 0) {
+        inverted_indices.reserve(inverted_row_count);
+        auto it = indices.begin();
+        auto next_val = *it;
+        for (auto i = 0; i < total_row_count; i++) {
+            // index is in the existing set
+            if (i == next_val) {
+                it++;
+
+                if (it == indices.end()) {
+                    next_val = -1;
+                } else {
+                    next_val = *it;
+                }
+            } else {
+                inverted_indices.push_back(i);
+            }
+        }
+    }
+
+    return inverted_indices;
 }
 
 #pragma region StringColumn
@@ -86,8 +118,44 @@ void StringColumn::Resize(size_t capacity) {
 void StringColumn::Reserve(size_t capacity) {
     entries.reserve(capacity);
 }
-std::vector<int64_t> StringColumn::FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) {
+
+std::vector<int64_t> StringColumn::GetFilteredIndices(double min_value, double max_value, int64_t start_index, int64_t end_index) {
     return std::vector<int64_t>();
+}
+
+std::vector<int64_t> StringColumn::GetFilteredIndices(std::string search_string, bool case_insensitive, int64_t start_index, int64_t end_index) {
+    std::vector<int64_t> matching_indices;
+
+    if (case_insensitive) {
+        std::transform(search_string.begin(), search_string.end(), search_string.begin(), ::tolower);
+    }
+
+    if (start_index < 0 || start_index >= entries.size()) {
+        start_index = 0;
+    }
+
+    if (end_index < 0 || end_index >= entries.size()) {
+        end_index = entries.size() - 1;
+    }
+
+    if (case_insensitive) {
+        for (auto i = start_index; i < end_index; i++) {
+            auto val = entries[i];
+            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+            if (val.find(search_string) != string::npos) {
+                matching_indices.push_back(i);
+            }
+        }
+    } else {
+        for (auto i = start_index; i < end_index; i++) {
+            auto& val = entries[i];
+            if (val.find(search_string) != string::npos) {
+                matching_indices.push_back(i);
+            }
+        }
+    }
+
+    return matching_indices;
 }
 
 #pragma endregion
@@ -117,7 +185,11 @@ void UnsupportedColumn::FillFromText(const pugi::xml_text& text) {
 void UnsupportedColumn::FillEmpty() {
 }
 
-std::vector<int64_t> UnsupportedColumn::FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) {
+std::vector<int64_t> UnsupportedColumn::GetFilteredIndices(double min_value, double max_value, int64_t start_index, int64_t end_index) {
+    return std::vector<int64_t>();
+}
+
+std::vector<int64_t> UnsupportedColumn::GetFilteredIndices(std::string search_string, bool case_sensitive, int64_t start_index, int64_t end_index) {
     return std::vector<int64_t>();
 }
 

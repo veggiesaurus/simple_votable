@@ -1,52 +1,125 @@
 #include <chrono>
 #include <numeric>
+#include <execution>
+#include <algorithm>
+
 #include <fmt/format.h>
 #include "Table.h"
 
 using namespace std;
-
+using namespace carta;
 int main(int argc, char* argv[]) {
-    if (argc < 3) {
+    if (argc < 4) {
         fmt::print("Incorrect arguments supplied\n");
         return 1;
     }
 
     string filename = argv[1];
     string column_to_sum = argv[2];
-    bool header_only = (argc == 4);
+    string column_to_sum2 = argv[3];
+    bool header_only = (argc == 5);
 
     auto t_start = chrono::high_resolution_clock::now();
-    carta::Table table(filename, header_only);
+    Table table(filename, header_only);
     auto t_end = chrono::high_resolution_clock::now();
     double dt = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
     if (table.IsValid()) {
         table.PrintInfo(false);
         fmt::print("Read {} {} in {} ms\n", header_only ? "header of" : "table", filename, dt);
 
-        carta::Column* ra_column = table.GetColumn(column_to_sum);
-        if (ra_column) {
-            auto float_column = dynamic_cast<carta::NumericColumn<float>*>(ra_column);
-            auto double_column = dynamic_cast<carta::NumericColumn<double>*>(ra_column);
+        Column* first_column = table.GetColumn(column_to_sum);
+        Column* second_column = table.GetColumn(column_to_sum2);
+        if (first_column && second_column) {
+            auto float_column = dynamic_cast<NumericColumn<float>*>(first_column);
+            auto double_column = dynamic_cast<NumericColumn<double>*>(first_column);
 
-            double sum;
+            double sum_first;
             if (float_column) {
-                sum = accumulate(float_column->entries.begin(), float_column->entries.end(), 0.0);
+                sum_first = accumulate(float_column->entries.begin(), float_column->entries.end(), 0.0);
             } else if (double_column) {
-                sum = accumulate(double_column->entries.begin(), double_column->entries.end(), 0.0);
+                sum_first = accumulate(double_column->entries.begin(), double_column->entries.end(), 0.0);
             } else {
                 fmt::print("Column with name \"{}\" is not a floating-point type!\n", column_to_sum);
                 return 1;
             }
 
-            double mean = sum / table.NumRows();
-            fmt::print("Mean of column \"{}\": {} {}\n", column_to_sum, mean, ra_column->unit);
+            auto float_column2 = dynamic_cast<NumericColumn<float>*>(second_column);
+            auto double_column2 = dynamic_cast<NumericColumn<double>*>(second_column);
+            double sum_second = 0;
+
+            if (float_column2) {
+                sum_second = accumulate(float_column2->entries.begin(), float_column2->entries.end(), 0.0);
+            } else if (double_column2) {
+                sum_second = accumulate(double_column2->entries.begin(), double_column2->entries.end(), 0.0);
+            } else {
+                fmt::print("Column with name \"{}\" is not a floating-point type!\n", column_to_sum2);
+                return 1;
+            }
+
+            double mean = sum_first / table.NumRows();
+            double mean2 = sum_second / table.NumRows();
+            fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum, mean, first_column->unit);
+            fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum2, mean2, second_column->unit);
 
             auto t_start_filter = chrono::high_resolution_clock::now();
-            auto num_matches = ra_column->FilterRange(mean, numeric_limits<float>::max()).size();
+            // Get indices of rows that pass the individual filters
+            auto first_matches = first_column->GetFilteredIndices(mean, numeric_limits<float>::max());
+            auto second_matches = second_column->GetFilteredIndices(mean2, numeric_limits<float>::max());
+
+            // Calculate set intersection to get indices of rows that pass EITHER filters
+            std::vector<int64_t> match_intersection;
+            std::set_intersection(first_matches.begin(), first_matches.end(), second_matches.begin(), second_matches.end(), std::back_inserter(match_intersection));
+            auto num_intersections = match_intersection.size();
+            std::vector<int64_t> match_union;
+            std::set_union(first_matches.begin(), first_matches.end(), second_matches.begin(), second_matches.end(), std::back_inserter(match_union));
+            auto num_unions = match_union.size();
+
+            std::vector<int64_t> match_not = Column::InvertIndices(match_union, table.NumRows());
+            auto num_inverted = match_not.size();
             auto t_end_filter = chrono::high_resolution_clock::now();
             double dt_filter = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_filter - t_start_filter).count();
-            fmt::print("{} entries with column \"{}\" >= {} matched in {} ms\n", num_matches, column_to_sum, mean, dt_filter);
 
+            double test_val = NAN;
+            auto t_start_sort = chrono::high_resolution_clock::now();
+            if (!match_intersection.empty()) {
+                if (float_column) {
+                    // For a serial sort, remove the first argument
+                    std::sort(std::execution::par_unseq, match_union.begin(), match_union.end(), [float_column](int64_t a, int64_t b) {
+                        return float_column->entries[a] < float_column->entries[b];
+                    });
+                    test_val = float_column->entries[match_union[0]];
+                } else {
+                    std::sort(std::execution::par_unseq, match_union.begin(), match_union.end(), [double_column](int64_t a, int64_t b) {
+                        return double_column->entries[a] < double_column->entries[b];
+                    });
+                    test_val = double_column->entries[match_union[0]];
+                }
+            }
+
+            auto t_end_sort = chrono::high_resolution_clock::now();
+            double dt_sort = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_sort - t_start_sort).count();
+
+            // Try to get a string column with name or ID "MAIN_ID"
+            string string_name = "MAIN_ID";
+            string test_string = "CoSmoS";
+            auto string_column = dynamic_cast<StringColumn*>(table.GetColumn(string_name));
+            if (string_column) {
+                auto t_start_string = chrono::high_resolution_clock::now();
+                auto string_matched_indices = ((Column*) (string_column))->GetFilteredIndices(test_string, true);
+                auto num_matches = string_matched_indices.size();
+                auto t_end_string = chrono::high_resolution_clock::now();
+                double dt_string = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_string - t_start_string).count();
+                fmt::print("{} entries with \"{}\" containing the string \"{}\" found in {:2f} ms\n", num_matches, string_name, test_string, dt_string);
+            }
+
+            fmt::print("{} entries with \"{}\" >= {:.3f} && \"{}\" >= {:.3f}\n",
+                       num_intersections, first_column->name, mean, second_column->name, mean2);
+            fmt::print("{} entries with \"{}\" >= {:.3f} || \"{}\" >= {:.3f}\n",
+                       num_unions, first_column->name, mean, second_column->name, mean2);
+            fmt::print("{} entries with \"{}\" < {:.3f} && \"{}\" < {:.3f}\n",
+                       num_inverted, first_column->name, mean, second_column->name, mean2);
+            fmt::print("Filtering done in {:.2f} ms\n", dt_filter);
+            fmt::print("Sorting of {} entries by \"{}\" done in {:.2f} ms. Lowest value: {:.3f}\n", match_union.size(), double_column->name, dt_sort, test_val);
         } else {
             fmt::print("Column with name \"{}\" not found!\n", column_to_sum);
         }

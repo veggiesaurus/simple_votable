@@ -63,7 +63,7 @@ void NumericColumn<T>::Reserve(size_t capacity) {
 }
 
 template<class T>
-std::vector<int64_t> NumericColumn<T>::FilterRange(double min_value, double max_value, int64_t start_index, int64_t end_index) {
+std::vector<int64_t> NumericColumn<T>::GetFilteredIndices(double min_value, double max_value, int64_t start_index, int64_t end_index) {
     std::vector<int64_t> matching_indices;
 
     if (start_index < 0 || start_index >= entries.size()) {
@@ -84,6 +84,10 @@ std::vector<int64_t> NumericColumn<T>::FilterRange(double min_value, double max_
     return matching_indices;
 }
 
+template<class T>
+std::vector<int64_t> NumericColumn<T>::GetFilteredIndices(std::string search_string, bool case_sensitive, int64_t start_index, int64_t end_index) {
+    return std::vector<int64_t>();
+}
 }
 
 #endif //VOTABLE_TEST__NUMERICCOLUMN_TCC_
