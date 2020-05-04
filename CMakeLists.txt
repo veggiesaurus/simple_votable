@@ -14,5 +14,5 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(LINK_LIBS ${LINK_LIBS} pugixml fmt tbb)
-add_executable(votable_test main.cpp Table.cc Table.h Columns.h Columns.cc)
+add_executable(votable_test main.cpp Table.cc Table.h Columns.h Columns.cc Filter.cc Filter.h)
 target_link_libraries(votable_test ${LINK_LIBS})

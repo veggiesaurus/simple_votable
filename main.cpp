@@ -5,6 +5,7 @@
 
 #include <fmt/format.h>
 #include "Table.h"
+#include "Filter.h"
 
 using namespace std;
 using namespace carta;
@@ -62,16 +63,18 @@ int main(int argc, char* argv[]) {
             fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum2, mean2, second_column->unit);
 
             auto t_start_filter = chrono::high_resolution_clock::now();
-            // Get indices of rows that pass the individual filters
-            auto first_matches = first_column->GetFilteredIndices(mean, numeric_limits<float>::max());
-            auto second_matches = second_column->GetFilteredIndices(mean2, numeric_limits<float>::max());
+            auto first_matches = NumericFilter(first_column, mean, NAN).Execute();
+            auto second_matches = NumericFilter(second_column, mean2, NAN).Execute();
 
             // Calculate set intersection to get indices of rows that pass EITHER filters
-            std::vector<int64_t> match_intersection;
-            std::set_intersection(first_matches.begin(), first_matches.end(), second_matches.begin(), second_matches.end(), std::back_inserter(match_intersection));
+            std::vector<int64_t> match_intersection = LogicalFilter(
+                LogicalFilter::AND, vector<Filter*>{{new NumericFilter(first_column, mean, NAN),
+                                                     new NumericFilter(second_column, mean2, NAN)}}).Execute();
             auto num_intersections = match_intersection.size();
-            std::vector<int64_t> match_union;
-            std::set_union(first_matches.begin(), first_matches.end(), second_matches.begin(), second_matches.end(), std::back_inserter(match_union));
+
+            std::vector<int64_t> match_union = LogicalFilter(
+                LogicalFilter::OR, vector<Filter*>{{new NumericFilter(first_column, mean, NAN),
+                                                     new NumericFilter(second_column, mean2, NAN)}}).Execute();
             auto num_unions = match_union.size();
 
             std::vector<int64_t> match_not = Column::InvertIndices(match_union, table.NumRows());
@@ -81,7 +84,7 @@ int main(int argc, char* argv[]) {
 
             double test_val = NAN;
             auto t_start_sort = chrono::high_resolution_clock::now();
-            if (!match_intersection.empty()) {
+            if (!match_union.empty()) {
                 if (float_column) {
                     // For a serial sort, remove the first argument
                     std::sort(std::execution::par_unseq, match_union.begin(), match_union.end(), [float_column](int64_t a, int64_t b) {
@@ -101,7 +104,7 @@ int main(int argc, char* argv[]) {
 
             // Try to get a string column with name or ID "MAIN_ID"
             string string_name = "MAIN_ID";
-            string test_string = "CoSmoS";
+            string test_string = "COSMOS";
             auto string_column = dynamic_cast<StringColumn*>(table.GetColumn(string_name));
             if (string_column) {
                 auto t_start_string = chrono::high_resolution_clock::now();
