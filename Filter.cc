@@ -1,7 +1,9 @@
+#include "Filter.h"
+
 #include <string>
 #include <utility>
 #include <numeric>
-#include "Filter.h"
+#include <execution>
 
 using namespace std;
 
@@ -119,6 +121,52 @@ IndexList InvertIndices(const IndexList& indices, int64_t total_row_count) {
     }
 
     return inverted_indices;
+}
+
+template<class T>
+bool SortByNumericColumn(IndexList& indices, Column* column, bool ascending) {
+    auto numeric_column = dynamic_cast<NumericColumn<T>*>(column);
+    if (!numeric_column) {
+        return false;
+    }
+
+    if (ascending) {
+        std::sort(execution::par_unseq, indices.begin(), indices.end(), [numeric_column](int64_t a, int64_t b) {
+            return numeric_column->entries[a] < numeric_column->entries[b];
+        });
+    } else {
+        std::sort(execution::par_unseq, indices.begin(), indices.end(), [numeric_column](int64_t a, int64_t b) {
+            return numeric_column->entries[a] > numeric_column->entries[b];
+        });
+    }
+
+    return true;
+}
+
+bool SortByStringColumn(IndexList& indices, Column* column, bool ascending) {
+    auto string_column = dynamic_cast<StringColumn*>(column);
+    if (!string_column) {
+        return false;
+    }
+
+    // TODO: implement string sorting
+
+    return true;
+}
+
+bool SortByColumn(IndexList& indices, Column* column, bool ascending) {
+    if (!column) {
+        return false;
+    }
+
+    switch (column->data_type) {
+        case FLOAT: return SortByNumericColumn<float>(indices, column, ascending);
+        case DOUBLE: return SortByNumericColumn<double>(indices, column, ascending);
+        case INT: return SortByNumericColumn<int>(indices, column, ascending);
+        case LONG: return SortByNumericColumn<long>(indices, column, ascending);
+        case STRING: return SortByStringColumn(indices, column, ascending);
+        default: return false;
+    }
 }
 
 }

@@ -1,6 +1,5 @@
 #include <chrono>
 #include <numeric>
-#include <execution>
 #include <algorithm>
 
 #include <fmt/format.h>
@@ -81,17 +80,11 @@ int main(int argc, char* argv[]) {
             double test_val = NAN;
             auto t_start_sort = chrono::high_resolution_clock::now();
             if (!match_union.empty()) {
-                if (float_column) {
-                    // For a serial sort, remove the first argument
-                    std::sort(std::execution::par_unseq, match_union.begin(), match_union.end(), [float_column](int64_t a, int64_t b) {
-                        return float_column->entries[a] < float_column->entries[b];
-                    });
-                    test_val = float_column->entries[match_union[0]];
-                } else {
-                    std::sort(std::execution::par_unseq, match_union.begin(), match_union.end(), [double_column](int64_t a, int64_t b) {
-                        return double_column->entries[a] < double_column->entries[b];
-                    });
+                SortByColumn(match_union, first_column, false);
+                if (double_column) {
                     test_val = double_column->entries[match_union[0]];
+                } else if (float_column) {
+                    test_val = float_column->entries[match_union[0]];
                 }
             }
 
@@ -118,7 +111,7 @@ int main(int argc, char* argv[]) {
             fmt::print("{} entries with \"{}\" < {:.3f} && \"{}\" < {:.3f}\n",
                        num_inverted, first_column->name, mean, second_column->name, mean2);
             fmt::print("Filtering done in {:.2f} ms\n", dt_filter);
-            fmt::print("Sorting of {} entries by \"{}\" done in {:.2f} ms. Lowest value: {:.3f}\n", match_union.size(), double_column->name, dt_sort, test_val);
+            fmt::print("Sorting of {} entries by \"{}\" done in {:.2f} ms. Highest value: {:.3f}\n", match_union.size(), first_column->name, dt_sort, test_val);
         } else {
             fmt::print("Column with name \"{}\" not found!\n", column_to_sum);
         }
