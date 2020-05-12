@@ -299,9 +299,27 @@ bool TableView::SortByStringColumn(Column* column, bool ascending) {
         return false;
     }
 
-    // TODO: implement string sorting
+    // If we're sorting an entire column, we first need to populate the indices
+    if (!_is_subset) {
+        _subset_indices.resize(_table->NumRows());
+        std::iota(_subset_indices.begin(), _subset_indices.end(), 0);
+        _is_subset = true;
+    }
 
-    return false;
+    // Perform ascending or descending sort
+    if (ascending) {
+        std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [string_column](int64_t a, int64_t b) {
+            return string_column->entries[a] < string_column->entries[b];
+        });
+    } else {
+        std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [string_column](int64_t a, int64_t b) {
+            return string_column->entries[a] > string_column->entries[b];
+        });
+    }
+
+    // After sorting by a specific column, the table view is no longer ordered by index
+    _ordered = false;
+    return true;
 }
 
 bool TableView::SortByIndex() {

@@ -87,13 +87,23 @@ int main(int argc, char* argv[]) {
             string test_string = "COSMOS";
             auto string_column = table.GetColumn(string_name);
             if (string_column) {
+                string first_string;
                 auto t_start_string = chrono::high_resolution_clock::now();
                 auto string_matches = table.View();
-                string_matches.StringFilter(string_column, test_string, true);
+                string_matches.StringFilter(string_column, test_string, false);
+                string_matches.SortByColumn(string_column, true);
                 auto num_string_matches = string_matches.NumRows();
+                if (num_string_matches) {
+                    first_string = string_matches.StringValues(string_column, 0, 1)[0];
+                }
                 auto t_end_string = chrono::high_resolution_clock::now();
                 double dt_string = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_string - t_start_string).count();
-                fmt::print("{} entries with \"{}\" containing the string \"{}\" found in {:2f} ms\n", num_string_matches, string_name, test_string, dt_string);
+                fmt::print("{} entries with \"{}\" containing the string \"{}\" found in {:2f} ms. First string: {}\n",
+                           num_string_matches,
+                           string_name,
+                           test_string,
+                           dt_string,
+                           first_string);
             }
 
             fmt::print("{} entries with \"{}\" >= {:.3f} && \"{}\" >= {:.3f}\n",

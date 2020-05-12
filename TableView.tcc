@@ -12,19 +12,22 @@ bool TableView::SortByNumericColumn(Column* column, bool ascending) {
         return false;
     }
 
-    if (_is_subset) {
-        if (ascending) {
-            std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [numeric_column](int64_t a, int64_t b) {
-                return numeric_column->entries[a] < numeric_column->entries[b];
-            });
-        } else {
-            std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [numeric_column](int64_t a, int64_t b) {
-                return numeric_column->entries[a] > numeric_column->entries[b];
-            });
-        }
+    // If we're sorting an entire column, we first need to populate the indices
+    if (!_is_subset) {
+        _subset_indices.resize(_table->NumRows());
+        std::iota(_subset_indices.begin(), _subset_indices.end(), 0);
+        _is_subset = true;
+    }
+
+    // Perform ascending or descending sort
+    if (ascending) {
+        std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [numeric_column](int64_t a, int64_t b) {
+            return numeric_column->entries[a] < numeric_column->entries[b];
+        });
     } else {
-        // TODO: sort full columns
-        return false;
+        std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [numeric_column](int64_t a, int64_t b) {
+            return numeric_column->entries[a] > numeric_column->entries[b];
+        });
     }
 
     // After sorting by a specific column, the table view is no longer ordered by index
@@ -35,21 +38,21 @@ bool TableView::SortByNumericColumn(Column* column, bool ascending) {
 template<class T>
 std::vector<T> TableView::NumericValues(int64_t column_index, int64_t start, int64_t end) const {
     if (_table) {
-        return NumericValues<T>(_table->GetColumnByIndex(column_index), start, end);
+        return NumericValues < T > (_table->GetColumnByIndex(column_index), start, end);
     }
     return std::vector<T>();
 }
 
 template<class T>
-std::vector <T> TableView::NumericValues(const std::string& column_name_or_id, int64_t start, int64_t end) const {
+std::vector<T> TableView::NumericValues(const std::string& column_name_or_id, int64_t start, int64_t end) const {
     if (_table) {
-        return NumericValues<T>(_table->GetColumn(column_name_or_id), start, end);
+        return NumericValues < T > (_table->GetColumn(column_name_or_id), start, end);
     }
     return std::vector<T>();
 }
 
 template<class T>
-std::vector<T> TableView::NumericValues(Column* column, int64_t start, int64_t end) const{
+std::vector<T> TableView::NumericValues(Column* column, int64_t start, int64_t end) const {
     auto numeric_column = dynamic_cast<NumericColumn<T>*>(column);
     if (!numeric_column || numeric_column->entries.empty()) {
         return std::vector<T>();
