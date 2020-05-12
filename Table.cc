@@ -3,8 +3,6 @@
 #include <fmt/format.h>
 #include "Table.h"
 
-#define PARALLEL_FILL
-
 namespace carta {
 using namespace std;
 
@@ -70,7 +68,8 @@ Table::Table(const string& filename, bool header_only)
 
     _valid = true;
 }
-string Table::GetHeader(const string& filename) const {
+
+string Table::GetHeader(const string& filename) {
     ifstream in(filename);
     string header_string;
     // Measure entire file size to ensure we don't read past EOF
@@ -107,6 +106,7 @@ bool Table::PopulateFields(const pugi::xml_node& table) {
 
     return !_columns.empty();
 }
+
 bool Table::PopulateRows(const pugi::xml_node& table) {
     auto data = table.child("DATA");
     auto table_data = data.child("TABLEDATA");
@@ -117,7 +117,6 @@ bool Table::PopulateRows(const pugi::xml_node& table) {
     // VOTable standard specifies TABLEDATA element contains only TR children, which contain only TD children
     auto row_nodes = table_data.children();
 
-#ifdef PARALLEL_FILL
     std::vector<pugi::xml_node> rows;
     for (auto& row : row_nodes) {
         rows.push_back(row);
@@ -150,42 +149,14 @@ bool Table::PopulateRows(const pugi::xml_node& table) {
             }
         }
     }
-#else
-    // Reserve capacity for the appropriate number of rows if it is specified
-    size_t expected_num_rows = table.attribute("nrows").as_ullong();
-    if (expected_num_rows > 0) {
-        for (auto column: _columns) {
-            column->Reserve(expected_num_rows);
-        }
-    }
-
-    for (auto& row : row_nodes) {
-        auto column_iterator = _columns.begin();
-        auto column_nodes = row.children();
-        for (auto& td: column_nodes) {
-            if (column_iterator == _columns.end()) {
-                fmt::print("Malformed VOTable: Too many TD entries for row {}", _num_rows);
-                return false;
-            }
-            (*column_iterator)->FillFromText(td.text());
-            column_iterator++;
-        }
-
-        // Fill remaining / missing columns
-        while (column_iterator != _columns.end()) {
-            (*column_iterator)->FillEmpty();
-            column_iterator++;
-        }
-        _num_rows++;
-    }
-#endif
     return true;
 }
 
 bool Table::IsValid() const {
     return _valid;
 }
-void Table::PrintInfo(bool skip_unknowns) {
+
+void Table::PrintInfo(bool skip_unknowns) const {
     fmt::print("Rows: {}; Columns: {};\n", _num_rows, _columns.size());
     for (auto column: _columns) {
         if (!skip_unknowns || column->data_type != UNSUPPORTED) {
@@ -194,14 +165,14 @@ void Table::PrintInfo(bool skip_unknowns) {
     }
 }
 
-Column* Table::GetColumnByIndex(int i) {
+Column* Table::GetColumnByIndex(int i) const {
     if (i < _columns.size()) {
         return _columns[i];
     }
     return nullptr;
 }
 
-Column* Table::GetColumnByName(const std::string& name) {
+Column* Table::GetColumnByName(const std::string& name) const {
     auto it = _column_name_map.find(name);
     if (it != _column_name_map.end()) {
         return it->second;
@@ -209,7 +180,7 @@ Column* Table::GetColumnByName(const std::string& name) {
     return nullptr;
 }
 
-Column* Table::GetColumnById(const std::string& id) {
+Column* Table::GetColumnById(const std::string& id) const {
     auto it = _column_id_map.find(id);
     if (it != _column_id_map.end()) {
         return it->second;
@@ -217,7 +188,7 @@ Column* Table::GetColumnById(const std::string& id) {
     return nullptr;
 }
 
-Column* Table::GetColumn(const string& name_or_id) {
+Column* Table::GetColumn(const string& name_or_id) const {
     // Search first by ID and then by name
     auto id_result = GetColumnById(name_or_id);
     if (id_result) {
@@ -226,11 +197,11 @@ Column* Table::GetColumn(const string& name_or_id) {
     return GetColumnByName(name_or_id);
 }
 
-size_t Table::NumColumns() {
+size_t Table::NumColumns() const {
     return _columns.size();
 }
 
-size_t Table::NumRows() {
+size_t Table::NumRows() const {
     return _num_rows;
 }
 
@@ -238,6 +209,10 @@ Table::~Table() {
     for (auto column: _columns) {
         delete column;
     }
+}
+
+TableView Table::View() const {
+    return TableView(this);
 }
 
 }

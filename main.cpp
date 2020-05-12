@@ -4,7 +4,6 @@
 
 #include <fmt/format.h>
 #include "Table.h"
-#include "Filter.h"
 
 using namespace std;
 using namespace carta;
@@ -62,29 +61,21 @@ int main(int argc, char* argv[]) {
             fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum2, mean2, second_column->unit);
 
             auto t_start_filter = chrono::high_resolution_clock::now();
-            auto first_matches = NumericFilter(first_column, mean, NAN);
-            auto second_matches = NumericFilter(second_column, mean2, NAN);
-
-            // Calculate set intersection to get indices of rows that pass EITHER filters
-            std::vector<int64_t> match_intersection = LogicalFilter(AND, first_matches, second_matches);
-            auto num_intersections = match_intersection.size();
-
-            std::vector<int64_t> match_union = LogicalFilter(OR, first_matches, second_matches);
-            auto num_unions = match_union.size();
-
-            std::vector<int64_t> match_not = InvertIndices(match_union, table.NumRows());
-            auto num_inverted = match_not.size();
+            auto filtered_table = table.View();
+            filtered_table.NumericFilter(first_column, mean, NAN);
+            filtered_table.NumericFilter(second_column, mean2, NAN);
+            auto num_matches = filtered_table.NumRows();
             auto t_end_filter = chrono::high_resolution_clock::now();
             double dt_filter = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_filter - t_start_filter).count();
 
             double test_val = NAN;
             auto t_start_sort = chrono::high_resolution_clock::now();
-            if (!match_union.empty()) {
-                SortByColumn(match_union, first_column, false);
+            if (num_matches) {
+                filtered_table.SortByColumn(first_column, false);
                 if (double_column) {
-                    test_val = double_column->entries[match_union[0]];
-                } else if (float_column) {
-                    test_val = float_column->entries[match_union[0]];
+                    test_val = filtered_table.NumericValues<double>(double_column, 0, 1)[0];
+                } else {
+                    test_val = filtered_table.NumericValues<float>(float_column, 0, 1)[0];
                 }
             }
 
@@ -97,21 +88,18 @@ int main(int argc, char* argv[]) {
             auto string_column = table.GetColumn(string_name);
             if (string_column) {
                 auto t_start_string = chrono::high_resolution_clock::now();
-                auto string_matched_indices = StringFilter(string_column, test_string, true);
-                auto num_matches = string_matched_indices.size();
+                auto string_matches = table.View();
+                string_matches.StringFilter(string_column, test_string, true);
+                auto num_string_matches = string_matches.NumRows();
                 auto t_end_string = chrono::high_resolution_clock::now();
                 double dt_string = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_string - t_start_string).count();
-                fmt::print("{} entries with \"{}\" containing the string \"{}\" found in {:2f} ms\n", num_matches, string_name, test_string, dt_string);
+                fmt::print("{} entries with \"{}\" containing the string \"{}\" found in {:2f} ms\n", num_string_matches, string_name, test_string, dt_string);
             }
 
             fmt::print("{} entries with \"{}\" >= {:.3f} && \"{}\" >= {:.3f}\n",
-                       num_intersections, first_column->name, mean, second_column->name, mean2);
-            fmt::print("{} entries with \"{}\" >= {:.3f} || \"{}\" >= {:.3f}\n",
-                       num_unions, first_column->name, mean, second_column->name, mean2);
-            fmt::print("{} entries with \"{}\" < {:.3f} && \"{}\" < {:.3f}\n",
-                       num_inverted, first_column->name, mean, second_column->name, mean2);
+                       num_matches, first_column->name, mean, second_column->name, mean2);
             fmt::print("Filtering done in {:.2f} ms\n", dt_filter);
-            fmt::print("Sorting of {} entries by \"{}\" done in {:.2f} ms. Highest value: {:.3f}\n", match_union.size(), first_column->name, dt_sort, test_val);
+            fmt::print("Sorting of {} entries by \"{}\" done in {:.2f} ms. Highest value: {:.3f}\n", num_matches, first_column->name, dt_sort, test_val);
         } else {
             fmt::print("Column with name \"{}\" not found!\n", column_to_sum);
         }

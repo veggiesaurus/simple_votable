@@ -11,6 +11,8 @@
 
 namespace carta {
 
+typedef std::vector<int64_t> IndexList;
+
 enum DataType {
     STRING,
     FLOAT,
