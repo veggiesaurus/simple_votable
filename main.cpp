@@ -73,9 +73,9 @@ int main(int argc, char* argv[]) {
             if (num_matches) {
                 filtered_table.SortByColumn(first_column, false);
                 if (double_column) {
-                    test_val = filtered_table.NumericValues<double>(double_column, 0, 1)[0];
+                    test_val = filtered_table.NumericValues<double>(column_to_sum, 0, 1)[0];
                 } else {
-                    test_val = filtered_table.NumericValues<float>(float_column, 0, 1)[0];
+                    test_val = filtered_table.NumericValues<float>(column_to_sum, 0, 1)[0];
                 }
             }
 
