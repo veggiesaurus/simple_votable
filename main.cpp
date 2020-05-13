@@ -26,12 +26,11 @@ int main(int argc, char* argv[]) {
         table.PrintInfo(false);
         fmt::print("Read {} {} in {} ms\n", header_only ? "header of" : "table", filename, dt);
 
-        Column* first_column = table.GetColumn(column_to_sum);
-        Column* second_column = table.GetColumn(column_to_sum2);
+        auto first_column = table.GetColumn(column_to_sum);
+        auto second_column = table.GetColumn(column_to_sum2);
         if (first_column && second_column) {
-            auto float_column = dynamic_cast<NumericColumn<float>*>(first_column);
-            auto double_column = dynamic_cast<NumericColumn<double>*>(first_column);
-
+            auto float_column = NumericColumn<float>::TryCast(first_column);
+            auto double_column = NumericColumn<double>::TryCast(first_column);
             double sum_first;
             if (float_column) {
                 sum_first = accumulate(float_column->entries.begin(), float_column->entries.end(), 0.0);
@@ -42,8 +41,8 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            auto float_column2 = dynamic_cast<NumericColumn<float>*>(second_column);
-            auto double_column2 = dynamic_cast<NumericColumn<double>*>(second_column);
+            auto float_column2 = NumericColumn<float>::TryCast(second_column);
+            auto double_column2 = NumericColumn<double>::TryCast(second_column);
             double sum_second = 0;
 
             if (float_column2) {

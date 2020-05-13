@@ -12,6 +12,10 @@
 namespace carta {
 
 typedef std::vector<int64_t> IndexList;
+template<class T>
+class NumericColumn;
+
+class StringColumn;
 
 enum DataType {
     STRING,
@@ -34,7 +38,7 @@ public:
     virtual ~Column() = default;
 
     // Factory for constructing a column from a <FIELD> node
-    static Column* FromField(const pugi::xml_node& field);
+    static std::unique_ptr<Column> FromField(const pugi::xml_node& field);
 
     DataType data_type;
     std::string name;
@@ -57,6 +61,9 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
+    static const StringColumn* TryCast(const Column* column) {
+        return dynamic_cast<const StringColumn*>(column);
+    }
 };
 
 class UnsupportedColumn : public Column {
@@ -83,6 +90,9 @@ public:
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
+    static const NumericColumn<T>* TryCast(const Column* column) {
+        return dynamic_cast<const NumericColumn<T>*>(column);
+    }
 };
 }
 

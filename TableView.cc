@@ -4,18 +4,19 @@
 #include <numeric>
 #include <execution>
 #include <algorithm>
+#include <utility>
 
 namespace carta {
 
 using namespace std;
 
-TableView::TableView(const Table* table) :
+TableView::TableView(const Table& table) :
     _table(table) {
     _is_subset = false;
     _ordered = true;
 }
 
-TableView::TableView(const Table* table, const IndexList& index_list, bool ordered) :
+TableView::TableView(const Table& table, const IndexList& index_list, bool ordered) :
     _table(table),
     _subset_indices(index_list),
     _ordered(ordered) {
@@ -23,22 +24,14 @@ TableView::TableView(const Table* table, const IndexList& index_list, bool order
 }
 
 bool TableView::NumericFilter(int64_t column_index, double min_value, double max_value) {
-    if (_table) {
-        return NumericFilter(_table->GetColumnByIndex(column_index), min_value, max_value);
-    } else {
-        return false;
-    }
+    return NumericFilter(_table.GetColumnByIndex(column_index), min_value, max_value);
 }
 
 bool TableView::NumericFilter(const string& column_name_or_id, double min_value, double max_value) {
-    if (_table) {
-        return NumericFilter(_table->GetColumn(column_name_or_id), min_value, max_value);
-    } else {
-        return false;
-    }
+    return NumericFilter(_table.GetColumn(column_name_or_id), min_value, max_value);
 }
 
-bool TableView::NumericFilter(Column* column, double min_value, double max_value) {
+bool TableView::NumericFilter(const Column* column, double min_value, double max_value) {
     if (!column) {
         return false;
     }
@@ -53,10 +46,10 @@ bool TableView::NumericFilter(Column* column, double min_value, double max_value
 }
 
 template<class T>
-bool TableView::NumericFilterTemplated(Column* column, double min_value, double max_value) {
+bool TableView::NumericFilterTemplated(const Column* column, double min_value, double max_value) {
     IndexList matching_indices;
 
-    auto numeric_column = dynamic_cast<NumericColumn<T>*>(column);
+    auto numeric_column = dynamic_cast<const NumericColumn<T>*>(column);
     if (!numeric_column) {
         return false;
     }
@@ -107,26 +100,18 @@ bool TableView::NumericFilterTemplated(Column* column, double min_value, double 
 }
 
 bool TableView::StringFilter(int64_t column_index, string search_string, bool case_insensitive) {
-    if (_table) {
-        return StringFilter(_table->GetColumnByIndex(column_index), search_string, case_insensitive);
-    } else {
-        return false;
-    }
+    return StringFilter(_table.GetColumnByIndex(column_index), std::move(search_string), case_insensitive);
 }
 
 bool TableView::StringFilter(const string& column_name_or_id, string search_string, bool case_insensitive) {
-    if (_table) {
-        return StringFilter(_table->GetColumn(column_name_or_id), search_string, case_insensitive);
-    } else {
-        return false;
-    }
+    return StringFilter(_table.GetColumn(column_name_or_id), std::move(search_string), case_insensitive);
 }
 
-bool TableView::StringFilter(Column* column, string search_string, bool case_insensitive) {
+bool TableView::StringFilter(const Column* column, string search_string, bool case_insensitive) {
     IndexList matching_indices;
 
-    auto string_column = dynamic_cast<StringColumn*>(column);
-    if (!_table || !string_column) {
+    auto string_column = dynamic_cast<const StringColumn*>(column);
+    if (!string_column) {
         return false;
     }
     size_t num_entries = string_column->entries.size();
@@ -189,7 +174,7 @@ bool TableView::StringFilter(Column* column, string search_string, bool case_ins
 
 bool TableView::Invert() {
     IndexList inverted_indices;
-    auto total_row_count = _table->NumRows();
+    auto total_row_count = _table.NumRows();
 
     if (_is_subset) {
         if (_subset_indices.empty()) {
@@ -230,12 +215,8 @@ bool TableView::Invert() {
 }
 
 bool TableView::Combine(const TableView& second) {
-    // If either of the views are not valid, the combined table is not valid
-    if (!_table || !second._table) {
-        return false;
-    }
     // If the views point to different tables, the combined table is not valid
-    if (_table != second._table) {
+    if (&_table != &second._table) {
         return false;
     }
     // If either table is not a subset, the combined table is not a subset
@@ -251,7 +232,7 @@ bool TableView::Combine(const TableView& second) {
 
     IndexList combined_indices;
     set_union(_subset_indices.begin(), _subset_indices.end(), second._subset_indices.begin(), second._subset_indices.end(), back_inserter(combined_indices));
-    if (combined_indices.size() == _table->NumRows()) {
+    if (combined_indices.size() == _table.NumRows()) {
         _subset_indices.clear();
         _is_subset = false;
     } else {
@@ -263,22 +244,14 @@ bool TableView::Combine(const TableView& second) {
 }
 
 bool TableView::SortByColumn(int64_t column_index, bool ascending) {
-    if (_table) {
-        return SortByColumn(_table->GetColumnByIndex(column_index), ascending);
-    } else {
-        return false;
-    }
+    return SortByColumn(_table.GetColumnByIndex(column_index), ascending);
 }
 
 bool TableView::SortByColumn(const string& column_name_or_id, bool ascending) {
-    if (_table) {
-        return SortByColumn(_table->GetColumn(column_name_or_id), ascending);
-    } else {
-        return false;
-    }
+    return SortByColumn(_table.GetColumn(column_name_or_id), ascending);
 }
 
-bool TableView::SortByColumn(Column* column, bool ascending) {
+bool TableView::SortByColumn(const Column* column, bool ascending) {
     if (!column) {
         return false;
     }
@@ -293,15 +266,15 @@ bool TableView::SortByColumn(Column* column, bool ascending) {
     }
 }
 
-bool TableView::SortByStringColumn(Column* column, bool ascending) {
-    auto string_column = dynamic_cast<StringColumn*>(column);
+bool TableView::SortByStringColumn(const Column* column, bool ascending) {
+    auto string_column = dynamic_cast<const StringColumn*>(column);
     if (!string_column) {
         return false;
     }
 
     // If we're sorting an entire column, we first need to populate the indices
     if (!_is_subset) {
-        _subset_indices.resize(_table->NumRows());
+        _subset_indices.resize(_table.NumRows());
         std::iota(_subset_indices.begin(), _subset_indices.end(), 0);
         _is_subset = true;
     }
@@ -333,28 +306,20 @@ bool TableView::SortByIndex() {
 size_t TableView::NumRows() const {
     if (_is_subset) {
         return _subset_indices.size();
-    } else if (_table) {
-        return _table->NumRows();
     }
-    return 0;
+    return _table.NumRows();
 }
 
 vector<string> TableView::StringValues(int64_t column_index, int64_t start, int64_t end) const {
-    if (_table) {
-        return StringValues(_table->GetColumnByIndex(column_index), start, end);
-    }
-    return vector<string>();
+    return StringValues(_table.GetColumnByIndex(column_index), start, end);
 }
 
 vector<string> TableView::StringValues(const string& column_name_or_id, int64_t start, int64_t end) const {
-    if (_table) {
-        return StringValues(_table->GetColumn(column_name_or_id), start, end);
-    }
-    return vector<string>();
+    return StringValues(_table.GetColumn(column_name_or_id), start, end);
 }
 
-vector<string> TableView::StringValues(Column* column, int64_t start, int64_t end) const {
-    auto string_column = dynamic_cast<StringColumn*>(column);
+vector<string> TableView::StringValues(const Column* column, int64_t start, int64_t end) const {
+    auto string_column = dynamic_cast<const StringColumn*>(column);
     if (!string_column || string_column->entries.empty()) {
         return vector<string>();
     }

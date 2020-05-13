@@ -94,13 +94,12 @@ bool Table::PopulateFields(const pugi::xml_node& table) {
     }
 
     for (auto& field: table.children("FIELD")) {
-        Column* column = Column::FromField(field);
-        _columns.push_back(column);
+        auto& column = _columns.emplace_back(Column::FromField(field));
         if (!column->name.empty()) {
-            _column_name_map[column->name] = column;
+            _column_name_map[column->name] = column.get();
         }
         if (!column->id.empty()) {
-            _column_id_map[column->id] = column;
+            _column_id_map[column->id] = column.get();
         }
     }
 
@@ -123,7 +122,7 @@ bool Table::PopulateRows(const pugi::xml_node& table) {
     }
 
     _num_rows = rows.size();
-    for (auto column: _columns) {
+    for (auto& column: _columns) {
         column->Resize(_num_rows);
     }
 
@@ -158,21 +157,21 @@ bool Table::IsValid() const {
 
 void Table::PrintInfo(bool skip_unknowns) const {
     fmt::print("Rows: {}; Columns: {};\n", _num_rows, _columns.size());
-    for (auto column: _columns) {
+    for (auto& column: _columns) {
         if (!skip_unknowns || column->data_type != UNSUPPORTED) {
             fmt::print(column->Info());
         }
     }
 }
 
-Column* Table::GetColumnByIndex(int i) const {
-    if (i < _columns.size()) {
-        return _columns[i];
+const Column* Table::GetColumnByIndex(int i) const {
+    if (i >= 0 && i < _columns.size()) {
+        return _columns[i].get();
     }
     return nullptr;
 }
 
-Column* Table::GetColumnByName(const std::string& name) const {
+const Column* Table::GetColumnByName(const std::string& name) const {
     auto it = _column_name_map.find(name);
     if (it != _column_name_map.end()) {
         return it->second;
@@ -180,7 +179,7 @@ Column* Table::GetColumnByName(const std::string& name) const {
     return nullptr;
 }
 
-Column* Table::GetColumnById(const std::string& id) const {
+const Column* Table::GetColumnById(const std::string& id) const {
     auto it = _column_id_map.find(id);
     if (it != _column_id_map.end()) {
         return it->second;
@@ -188,7 +187,7 @@ Column* Table::GetColumnById(const std::string& id) const {
     return nullptr;
 }
 
-Column* Table::GetColumn(const string& name_or_id) const {
+const Column* Table::GetColumn(const string& name_or_id) const {
     // Search first by ID and then by name
     auto id_result = GetColumnById(name_or_id);
     if (id_result) {
@@ -205,14 +204,8 @@ size_t Table::NumRows() const {
     return _num_rows;
 }
 
-Table::~Table() {
-    for (auto column: _columns) {
-        delete column;
-    }
-}
-
 TableView Table::View() const {
-    return TableView(this);
+    return TableView(*this);
 }
 
 }

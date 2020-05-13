@@ -6,15 +6,15 @@
 namespace carta {
 
 template<class T>
-bool TableView::SortByNumericColumn(Column* column, bool ascending) {
-    auto numeric_column = dynamic_cast<NumericColumn<T>*>(column);
+bool TableView::SortByNumericColumn(const Column* column, bool ascending) {
+    auto numeric_column = dynamic_cast<const NumericColumn<T>*>(column);
     if (!numeric_column) {
         return false;
     }
 
     // If we're sorting an entire column, we first need to populate the indices
     if (!_is_subset) {
-        _subset_indices.resize(_table->NumRows());
+        _subset_indices.resize(_table.NumRows());
         std::iota(_subset_indices.begin(), _subset_indices.end(), 0);
         _is_subset = true;
     }
@@ -37,23 +37,17 @@ bool TableView::SortByNumericColumn(Column* column, bool ascending) {
 
 template<class T>
 std::vector<T> TableView::NumericValues(int64_t column_index, int64_t start, int64_t end) const {
-    if (_table) {
-        return NumericValues < T > (_table->GetColumnByIndex(column_index), start, end);
-    }
-    return std::vector<T>();
+    return NumericValues < T > (_table.GetColumnByIndex(column_index), start, end);
 }
 
 template<class T>
 std::vector<T> TableView::NumericValues(const std::string& column_name_or_id, int64_t start, int64_t end) const {
-    if (_table) {
-        return NumericValues < T > (_table->GetColumn(column_name_or_id), start, end);
-    }
-    return std::vector<T>();
+    return NumericValues < T > (_table.GetColumn(column_name_or_id), start, end);
 }
 
 template<class T>
-std::vector<T> TableView::NumericValues(Column* column, int64_t start, int64_t end) const {
-    auto numeric_column = dynamic_cast<NumericColumn<T>*>(column);
+std::vector<T> TableView::NumericValues(const Column* column, int64_t start, int64_t end) const {
+    auto numeric_column = dynamic_cast<const NumericColumn<T>*>(column);
     if (!numeric_column || numeric_column->entries.empty()) {
         return std::vector<T>();
     }

@@ -1,32 +1,33 @@
+#include <memory>
 #include <numeric>
 #include "Columns.h"
 
 namespace carta {
 using namespace std;
 
-Column* Column::FromField(const pugi::xml_node& field) {
+std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
     auto data_type = field.attribute("datatype");
     string name = field.attribute("name").as_string();
     string array_size_string = field.attribute("arraysize").as_string();
     string type_string = data_type.as_string();
 
-    Column* column;
+    unique_ptr<Column> column;
 
     if (type_string == "char") {
-        column = new StringColumn(name);
+        column = make_unique<StringColumn>(name);
     } else if (!array_size_string.empty()) {
         // Can't support array-based column types other than char
-        column = new UnsupportedColumn(name);
+        column = make_unique<UnsupportedColumn>(name);
     } else if (type_string == "int" || type_string == "short" || type_string == "unsignedByte") {
-        column = new NumericColumn<int>(name);
+        column = make_unique<NumericColumn<int>>(name);
     } else if (type_string == "long") {
-        column = new NumericColumn<long>(name);
+        column = make_unique<NumericColumn<int64_t>>(name);
     } else if (type_string == "float") {
-        column = new NumericColumn<float>(name);
+        column = make_unique<NumericColumn<float>>(name);
     } else if (type_string == "double") {
-        column = new NumericColumn<double>(name);
+        column = make_unique<NumericColumn<double>>(name);
     } else {
-        column = new UnsupportedColumn(name);
+        column = make_unique<UnsupportedColumn>(name);
     }
 
     if (!array_size_string.empty()) {
