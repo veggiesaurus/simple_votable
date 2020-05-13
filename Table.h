@@ -18,13 +18,15 @@ public:
     Table(const std::string& filename, bool header_only = false);
     bool IsValid() const;
     void PrintInfo(bool skip_unknowns = true) const;
-    const Column* GetColumnByIndex(int i) const;
     const Column* GetColumnByName(const std::string& name) const;
     const Column* GetColumnById(const std::string& id) const;
-    const Column* GetColumn(const std::string& name_or_id) const;
     size_t NumColumns() const;
     size_t NumRows() const;
     TableView View() const;
+
+    const Column* operator[](size_t i) const;
+    const Column* operator[](const std::string& name_or_id) const;
+
 protected:
 
     bool PopulateFields(const pugi::xml_node& table);

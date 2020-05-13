@@ -23,14 +23,6 @@ TableView::TableView(const Table& table, const IndexList& index_list, bool order
     _is_subset = true;
 }
 
-bool TableView::NumericFilter(int64_t column_index, double min_value, double max_value) {
-    return NumericFilter(_table.GetColumnByIndex(column_index), min_value, max_value);
-}
-
-bool TableView::NumericFilter(const string& column_name_or_id, double min_value, double max_value) {
-    return NumericFilter(_table.GetColumn(column_name_or_id), min_value, max_value);
-}
-
 bool TableView::NumericFilter(const Column* column, double min_value, double max_value) {
     if (!column) {
         return false;
@@ -97,14 +89,6 @@ bool TableView::NumericFilterTemplated(const Column* column, double min_value, d
         _subset_indices = matching_indices;
     }
     return true;
-}
-
-bool TableView::StringFilter(int64_t column_index, string search_string, bool case_insensitive) {
-    return StringFilter(_table.GetColumnByIndex(column_index), std::move(search_string), case_insensitive);
-}
-
-bool TableView::StringFilter(const string& column_name_or_id, string search_string, bool case_insensitive) {
-    return StringFilter(_table.GetColumn(column_name_or_id), std::move(search_string), case_insensitive);
 }
 
 bool TableView::StringFilter(const Column* column, string search_string, bool case_insensitive) {
@@ -243,14 +227,6 @@ bool TableView::Combine(const TableView& second) {
     return true;
 }
 
-bool TableView::SortByColumn(int64_t column_index, bool ascending) {
-    return SortByColumn(_table.GetColumnByIndex(column_index), ascending);
-}
-
-bool TableView::SortByColumn(const string& column_name_or_id, bool ascending) {
-    return SortByColumn(_table.GetColumn(column_name_or_id), ascending);
-}
-
 bool TableView::SortByColumn(const Column* column, bool ascending) {
     if (!column) {
         return false;
@@ -308,14 +284,6 @@ size_t TableView::NumRows() const {
         return _subset_indices.size();
     }
     return _table.NumRows();
-}
-
-vector<string> TableView::StringValues(int64_t column_index, int64_t start, int64_t end) const {
-    return StringValues(_table.GetColumnByIndex(column_index), start, end);
-}
-
-vector<string> TableView::StringValues(const string& column_name_or_id, int64_t start, int64_t end) const {
-    return StringValues(_table.GetColumn(column_name_or_id), start, end);
 }
 
 vector<string> TableView::StringValues(const Column* column, int64_t start, int64_t end) const {

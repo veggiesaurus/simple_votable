@@ -164,13 +164,6 @@ void Table::PrintInfo(bool skip_unknowns) const {
     }
 }
 
-const Column* Table::GetColumnByIndex(int i) const {
-    if (i >= 0 && i < _columns.size()) {
-        return _columns[i].get();
-    }
-    return nullptr;
-}
-
 const Column* Table::GetColumnByName(const std::string& name) const {
     auto it = _column_name_map.find(name);
     if (it != _column_name_map.end()) {
@@ -187,7 +180,14 @@ const Column* Table::GetColumnById(const std::string& id) const {
     return nullptr;
 }
 
-const Column* Table::GetColumn(const string& name_or_id) const {
+const Column* Table::operator[](size_t i) const {
+    if (i < _columns.size()) {
+        return _columns[i].get();
+    }
+    return nullptr;
+}
+
+const Column* Table::operator[](const std::string& name_or_id) const {
     // Search first by ID and then by name
     auto id_result = GetColumnById(name_or_id);
     if (id_result) {

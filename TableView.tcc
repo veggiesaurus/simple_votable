@@ -36,16 +36,6 @@ bool TableView::SortByNumericColumn(const Column* column, bool ascending) {
 }
 
 template<class T>
-std::vector<T> TableView::NumericValues(int64_t column_index, int64_t start, int64_t end) const {
-    return NumericValues < T > (_table.GetColumnByIndex(column_index), start, end);
-}
-
-template<class T>
-std::vector<T> TableView::NumericValues(const std::string& column_name_or_id, int64_t start, int64_t end) const {
-    return NumericValues < T > (_table.GetColumn(column_name_or_id), start, end);
-}
-
-template<class T>
 std::vector<T> TableView::NumericValues(const Column* column, int64_t start, int64_t end) const {
     auto numeric_column = dynamic_cast<const NumericColumn<T>*>(column);
     if (!numeric_column || numeric_column->entries.empty()) {

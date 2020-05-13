@@ -24,10 +24,10 @@ int main(int argc, char* argv[]) {
     double dt = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
     if (table.IsValid()) {
         table.PrintInfo(false);
-        fmt::print("Read {} {} in {} ms\n", header_only ? "header of" : "table", filename, dt);
+        fmt::print("Read {} {} in {} ms. Table dimensions: {} x {}\n", header_only ? "header of" : "table", filename, dt, table.NumRows(), table.NumColumns());
 
-        auto first_column = table.GetColumn(column_to_sum);
-        auto second_column = table.GetColumn(column_to_sum2);
+        auto first_column = table[column_to_sum];
+        auto second_column = table[column_to_sum2];
         if (first_column && second_column) {
             auto float_column = NumericColumn<float>::TryCast(first_column);
             auto double_column = NumericColumn<double>::TryCast(first_column);
@@ -72,9 +72,9 @@ int main(int argc, char* argv[]) {
             if (num_matches) {
                 filtered_table.SortByColumn(first_column, false);
                 if (double_column) {
-                    test_val = filtered_table.NumericValues<double>(column_to_sum, 0, 1)[0];
+                    test_val = filtered_table.NumericValues<double>(double_column, 0, 1)[0];
                 } else {
-                    test_val = filtered_table.NumericValues<float>(column_to_sum, 0, 1)[0];
+                    test_val = filtered_table.NumericValues<float>(float_column, 0, 1)[0];
                 }
             }
 
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
             // Try to get a string column with name or ID "MAIN_ID"
             string string_name = "MAIN_ID";
             string test_string = "COSMOS";
-            auto string_column = table.GetColumn(string_name);
+            auto string_column = table[string_name];
             if (string_column) {
                 string first_string;
                 auto t_start_string = chrono::high_resolution_clock::now();
