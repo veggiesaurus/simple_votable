@@ -28,73 +28,28 @@ bool TableView::NumericFilter(const Column* column, double min_value, double max
         return false;
     }
 
-    switch (column->data_type) {
-        case FLOAT: return NumericFilterTemplated<float>(column, min_value, max_value);
-        case DOUBLE: return NumericFilterTemplated<double>(column, min_value, max_value);
-        case INT: return NumericFilterTemplated<int>(column, min_value, max_value);
-        case LONG: return NumericFilterTemplated<long>(column, min_value, max_value);
-        default: return false;
-    }
-}
-
-template<class T>
-bool TableView::NumericFilterTemplated(const Column* column, double min_value, double max_value) {
-    IndexList matching_indices;
-
-    auto numeric_column = dynamic_cast<const NumericColumn<T>*>(column);
-    if (!numeric_column) {
+    // Only filter for arithmetic types
+    if (column->data_type == UNSUPPORTED || column->data_type == STRING) {
         return false;
     }
 
-    T typed_min = min_value;
-    T typed_max = max_value;
+    column->FilterIndices(_subset_indices, _is_subset, min_value, max_value);
+    size_t num_entries = column->NumEntries();
 
-    if (!isfinite(min_value)) {
-        typed_min = numeric_limits<T>::lowest();
-    }
-
-    if (!isfinite(max_value)) {
-        typed_max = numeric_limits<T>::max();
-    }
-
-    size_t num_entries = numeric_column->entries.size();
-
-    if (_is_subset) {
-        // Only iterate through existing indices
-        for (auto i: _subset_indices) {
-            // Skip invalid entries
-            if (i < 0 || i >= num_entries) {
-                continue;
-            }
-            T val = numeric_column->entries[i];
-            if (val >= typed_min && val <= typed_max) {
-                matching_indices.push_back(i);
-            }
-        }
-    } else {
-        // Iterate through all possible indices
-        for (auto i = 0; i < num_entries; i++) {
-            T val = numeric_column->entries[i];
-            if (val >= typed_min && val <= typed_max) {
-                matching_indices.push_back(i);
-            }
-        }
-    }
-
-    if (matching_indices.size() == num_entries) {
+    if (_subset_indices.size() == num_entries) {
         _subset_indices.clear();
         _is_subset = false;
     } else {
         _is_subset = true;
-        _subset_indices = matching_indices;
     }
+
     return true;
 }
 
 bool TableView::StringFilter(const Column* column, string search_string, bool case_insensitive) {
     IndexList matching_indices;
 
-    auto string_column = dynamic_cast<const StringColumn*>(column);
+    auto string_column = DataColumn<string>::TryCast(column);
     if (!string_column) {
         return false;
     }
@@ -232,19 +187,7 @@ bool TableView::SortByColumn(const Column* column, bool ascending) {
         return false;
     }
 
-    switch (column->data_type) {
-        case FLOAT: return SortByNumericColumn<float>(column, ascending);
-        case DOUBLE: return SortByNumericColumn<double>(column, ascending);
-        case INT: return SortByNumericColumn<int>(column, ascending);
-        case LONG: return SortByNumericColumn<long>(column, ascending);
-        case STRING: return SortByStringColumn(column, ascending);
-        default: return false;
-    }
-}
-
-bool TableView::SortByStringColumn(const Column* column, bool ascending) {
-    auto string_column = dynamic_cast<const StringColumn*>(column);
-    if (!string_column) {
+    if (column->data_type == UNSUPPORTED) {
         return false;
     }
 
@@ -254,17 +197,7 @@ bool TableView::SortByStringColumn(const Column* column, bool ascending) {
         std::iota(_subset_indices.begin(), _subset_indices.end(), 0);
         _is_subset = true;
     }
-
-    // Perform ascending or descending sort
-    if (ascending) {
-        std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [string_column](int64_t a, int64_t b) {
-            return string_column->entries[a] < string_column->entries[b];
-        });
-    } else {
-        std::sort(std::execution::par_unseq, _subset_indices.begin(), _subset_indices.end(), [string_column](int64_t a, int64_t b) {
-            return string_column->entries[a] > string_column->entries[b];
-        });
-    }
+    column->SortIndices(_subset_indices, ascending);
 
     // After sorting by a specific column, the table view is no longer ordered by index
     _ordered = false;
@@ -284,43 +217,5 @@ size_t TableView::NumRows() const {
         return _subset_indices.size();
     }
     return _table.NumRows();
-}
-
-vector<string> TableView::StringValues(const Column* column, int64_t start, int64_t end) const {
-    auto string_column = dynamic_cast<const StringColumn*>(column);
-    if (!string_column || string_column->entries.empty()) {
-        return vector<string>();
-    }
-
-    if (_is_subset) {
-        int64_t N = _subset_indices.size();
-        int64_t begin_index = clamp(start, 0L, N - 1);
-        int64_t end_index = clamp(end, begin_index, N - 1);
-        if (end < 0) {
-            end_index = N - 1;
-        }
-
-        auto begin_it = _subset_indices.begin() + begin_index;
-        auto end_it = _subset_indices.begin() + end_index;
-        vector<string> values;
-        values.reserve(distance(begin_it, end_it));
-
-        auto& entries = string_column->entries;
-        for (auto it = begin_it; it != end_it; it++) {
-            values.push_back(entries[*it]);
-        }
-        return values;
-    } else {
-        int64_t N = string_column->entries.size();
-        int64_t begin_index = clamp(start, 0L, N - 1);
-        int64_t end_index = clamp(end, begin_index, N - 1);
-        if (end < 0) {
-            end_index = N - 1;
-        }
-
-        auto begin_it = string_column->entries.begin() + begin_index;
-        auto end_it = string_column->entries.end() + end_index;
-        return vector<string>(begin_it, end_it);
-    }
 }
 }

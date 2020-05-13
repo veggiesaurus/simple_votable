@@ -13,29 +13,30 @@ namespace carta {
 
 typedef std::vector<int64_t> IndexList;
 template<class T>
-class NumericColumn;
-
-class StringColumn;
+class DataColumn;
 
 enum DataType {
     STRING,
-    FLOAT,
-    DOUBLE,
-    INT,
-    LONG,
+    FP32,
+    FLOAT_GENERIC,
+    INT32,
+    ARITHMETIC,
     UNSUPPORTED
 };
 
 class Column {
 public:
-    virtual void SetFromText(const pugi::xml_text& text, size_t index) = 0;
-    virtual void SetEmpty(size_t index) = 0;
-    virtual void FillFromText(const pugi::xml_text& text) = 0;
-    virtual void FillEmpty() = 0;
-    virtual void Resize(size_t capacity) = 0;
-    virtual void Reserve(size_t capacity) = 0;
+    Column(const std::string& name_chr);
+    virtual void SetFromText(const pugi::xml_text& text, size_t index) {};
+    virtual void SetEmpty(size_t index) {};
+    virtual void FillFromText(const pugi::xml_text& text) {};
+    virtual void FillEmpty() {};
+    virtual void Resize(size_t capacity) {};
+    virtual void Reserve(size_t capacity) {};
+    virtual size_t NumEntries() const { return 0; };
+    virtual void SortIndices(IndexList& indices, bool ascending) const {};
+    virtual void FilterIndices(IndexList& existing_indices, bool is_subset, double min_val, double max_val) const {}
     virtual std::string Info();
-    virtual ~Column() = default;
 
     // Factory for constructing a column from a <FIELD> node
     static std::unique_ptr<Column> FromField(const pugi::xml_node& field);
@@ -50,52 +51,32 @@ public:
     std::string data_type_string;
 };
 
-class StringColumn : public Column {
-public:
-    std::vector<std::string> entries;
-    explicit StringColumn(const std::string& name_chr);
-    ~StringColumn() override = default;
-    void SetFromText(const pugi::xml_text& text, size_t index) override;
-    void SetEmpty(size_t index) override;
-    void FillFromText(const pugi::xml_text& text) override;
-    void FillEmpty() override;
-    void Resize(size_t capacity) override;
-    void Reserve(size_t capacity) override;
-    static const StringColumn* TryCast(const Column* column) {
-        return dynamic_cast<const StringColumn*>(column);
-    }
-};
-
-class UnsupportedColumn : public Column {
-public:
-    explicit UnsupportedColumn(const std::string& name_chr);
-    ~UnsupportedColumn() override = default;
-    void SetFromText(const pugi::xml_text&, size_t index) override;
-    void SetEmpty(size_t index) override;
-    void FillFromText(const pugi::xml_text& text) override;
-    void FillEmpty() override;
-    void Resize(size_t capacity) override;
-    void Reserve(size_t capacity) override;
-};
-
 template<class T>
-class NumericColumn : public Column {
+class DataColumn : public Column {
 public:
     std::vector<T> entries;
-    NumericColumn(const std::string& name_chr);
-    ~NumericColumn() override = default;
+    DataColumn(const std::string& name_chr);
     void SetFromText(const pugi::xml_text& text, size_t index) override;
     void SetEmpty(size_t index) override;
     void FillFromText(const pugi::xml_text& text) override;
     void FillEmpty() override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
-    static const NumericColumn<T>* TryCast(const Column* column) {
-        return dynamic_cast<const NumericColumn<T>*>(column);
+    size_t NumEntries() const override;
+    void SortIndices(IndexList& indices, bool ascending) const override;
+    void FilterIndices(IndexList& existing_indices, bool is_subset, double min_value, double max_value) const override;
+
+    static const DataColumn<T>* TryCast(const Column* column) {
+        if (!column || column->data_type == UNSUPPORTED) {
+            return nullptr;
+        }
+        return dynamic_cast<const DataColumn<T>*>(column);
     }
+protected:
+    T FromText(const pugi::xml_text& text);
 };
 }
 
-#include "NumericColumn.tcc"
+#include "DataColumn.tcc"
 
 #endif //VOTABLE_TEST__COLUMNS_H_

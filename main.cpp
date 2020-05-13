@@ -29,8 +29,8 @@ int main(int argc, char* argv[]) {
         auto first_column = table[column_to_sum];
         auto second_column = table[column_to_sum2];
         if (first_column && second_column) {
-            auto float_column = NumericColumn<float>::TryCast(first_column);
-            auto double_column = NumericColumn<double>::TryCast(first_column);
+            auto float_column = DataColumn<float>::TryCast(first_column);
+            auto double_column = DataColumn<double>::TryCast(first_column);
             double sum_first;
             if (float_column) {
                 sum_first = accumulate(float_column->entries.begin(), float_column->entries.end(), 0.0);
@@ -41,8 +41,8 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            auto float_column2 = NumericColumn<float>::TryCast(second_column);
-            auto double_column2 = NumericColumn<double>::TryCast(second_column);
+            auto float_column2 = DataColumn<float>::TryCast(second_column);
+            auto double_column2 = DataColumn<double>::TryCast(second_column);
             double sum_second = 0;
 
             if (float_column2) {
@@ -72,9 +72,9 @@ int main(int argc, char* argv[]) {
             if (num_matches) {
                 filtered_table.SortByColumn(first_column, false);
                 if (double_column) {
-                    test_val = filtered_table.NumericValues<double>(double_column, 0, 1)[0];
+                    test_val = filtered_table.Values<double>(double_column, 0, 1)[0];
                 } else {
-                    test_val = filtered_table.NumericValues<float>(float_column, 0, 1)[0];
+                    test_val = filtered_table.Values<float>(float_column, 0, 1)[0];
                 }
             }
 
@@ -93,11 +93,11 @@ int main(int argc, char* argv[]) {
                 string_matches.SortByColumn(string_column, true);
                 auto num_string_matches = string_matches.NumRows();
                 if (num_string_matches) {
-                    first_string = string_matches.StringValues(string_column, 0, 1)[0];
+                    first_string = string_matches.Values<string>(string_column, 0, 1)[0];
                 }
                 auto t_end_string = chrono::high_resolution_clock::now();
                 double dt_string = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_string - t_start_string).count();
-                fmt::print("{} entries with \"{}\" containing the string \"{}\" found in {:2f} ms. First string: {}\n",
+                fmt::print("{} entries with \"{}\" containing the string \"{}\" found in {:2f} ms. First string: \"{}\"\n",
                            num_string_matches,
                            string_name,
                            test_string,

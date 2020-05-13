@@ -26,16 +26,9 @@ public:
     // Retrieving data
     size_t NumRows() const;
     template<class T>
-    std::vector<T> NumericValues(const Column* column, int64_t start = -1, int64_t end = -1) const;
-    std::vector<std::string> StringValues(const Column* column, int64_t start = -1, int64_t end = -1) const;
+    std::vector<T> Values(const Column* column, int64_t start = -1, int64_t end = -1) const;
 
 protected:
-    template<class T>
-    bool NumericFilterTemplated(const Column* column, double min_value, double max_value);
-    template<class T>
-    bool SortByNumericColumn(const Column* column, bool ascending);
-    bool SortByStringColumn(const Column* column, bool ascending);
-
     bool _is_subset;
     bool _ordered;
     IndexList _subset_indices;
