@@ -1,6 +1,6 @@
 #include <memory>
-#include <numeric>
 #include "Columns.h"
+#include "DataColumn.tcc"
 
 namespace carta {
 using namespace std;

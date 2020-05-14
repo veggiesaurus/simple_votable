@@ -80,6 +80,4 @@ protected:
 };
 }
 
-#include "DataColumn.tcc"
-
 #endif //VOTABLE_TEST__COLUMNS_H_

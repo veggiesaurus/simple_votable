@@ -180,7 +180,7 @@ TEST(ParsedTable, CorrectDataValues) {
     EXPECT_EQ(DataColumn<int>::TryCast(table["col5"]), nullptr);
 }
 
-TEST(FilteringAndSorting, FailOnWrongFilterType) {
+TEST(Filtering, FailOnWrongFilterType) {
     Table table(test_path("ivoa_example.xml"));
     EXPECT_FALSE(table.View().StringFilter(table["dummy"], "N 224"));
     EXPECT_FALSE(table.View().StringFilter(table["col1"], "N 224"));
@@ -189,10 +189,174 @@ TEST(FilteringAndSorting, FailOnWrongFilterType) {
     EXPECT_FALSE(table.View().NumericFilter(table["col3"], 0, 100));
 }
 
-TEST(FilteringAndSorting, PassOnCorrectFilterType) {
+TEST(Filtering, PassOnCorrectFilterType) {
     Table table(test_path("ivoa_example.xml"));
     EXPECT_TRUE(table.View().StringFilter(table["col3"], "N 224"));
     EXPECT_TRUE(table.View().NumericFilter(table["col1"], 0, 100));
+}
+
+TEST(Filtering, CaseSensitiveStringFilter) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    view.StringFilter(table["col3"], "N 224");
+    EXPECT_EQ(view.NumRows(), 1);
+    view.StringFilter(table["col3"], "n 224");
+    EXPECT_EQ(view.NumRows(), 0);
+    view.StringFilter(table["col3"], "N 598");
+    EXPECT_EQ(view.NumRows(), 0);
+}
+
+TEST(Filtering, CaseInsensitiveStringFilter) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    view.StringFilter(table["col3"], "N 224", true);
+    EXPECT_EQ(view.NumRows(), 1);
+    view.StringFilter(table["col3"], "n 224", true);
+    EXPECT_EQ(view.NumRows(), 1);
+    view.StringFilter(table["col3"], "N 598", true);
+    EXPECT_EQ(view.NumRows(), 0);
+}
+
+TEST(Filtering, FailFilterExtractMistypedValues) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    auto double_vals = view.Values<double>(table["col1"]);
+    EXPECT_TRUE(double_vals.empty());
+    auto string_vals = view.Values<string>(table["col1"]);
+    EXPECT_TRUE(string_vals.empty());
+
+    view.StringFilter(table["col3"], "N 6744");
+    auto float_vals = view.Values<float>(table["col3"]);
+    EXPECT_TRUE(float_vals.empty());
+}
+
+TEST(Filtering, FilterExtractValues) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    view.NumericFilter(table["col1"], 10, NAN);
+    auto string_vals = view.Values<string>(table["col3"]);
+    EXPECT_EQ(string_vals.size(), 3);
+    EXPECT_EQ(string_vals[0], "N 224");
+
+    view.StringFilter(table["col3"], "N 6744");
+    auto float_vals = view.Values<float>(table["col1"]);
+    EXPECT_EQ(float_vals.size(), 1);
+    EXPECT_FLOAT_EQ(float_vals[0], 287.43f);
+}
+
+TEST(Filtering, NumericFilterMin) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    view.NumericFilter(table["col1"], 10, NAN);
+    EXPECT_EQ(view.NumRows(), 3);
+    view.NumericFilter(table["col1"], 11, NAN);
+    EXPECT_EQ(view.NumRows(), 2);
+    view.NumericFilter(table["col1"], 300, NAN);
+    EXPECT_EQ(view.NumRows(), 0);
+}
+
+TEST(Filtering, NumericFilterMax) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    view.NumericFilter(table["col1"], NAN, 300);
+    EXPECT_EQ(view.NumRows(), 3);
+    view.NumericFilter(table["col1"], NAN, 11);
+    EXPECT_EQ(view.NumRows(), 1);
+    view.NumericFilter(table["col1"], NAN, 10);
+    EXPECT_EQ(view.NumRows(), 0);
+}
+
+TEST(Filtering, NumericFilterRange) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    view.NumericFilter(table["col1"], 10, 300);
+    EXPECT_EQ(view.NumRows(), 3);
+    view.NumericFilter(table["col1"], 11, 300);
+    EXPECT_EQ(view.NumRows(), 2);
+    view.NumericFilter(table["col1"], 11, 14);
+    EXPECT_EQ(view.NumRows(), 0);
+}
+
+TEST(Sorting, FailSortMissingColummn) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    EXPECT_FALSE(view.SortByColumn(nullptr));
+}
+
+TEST(Sorting, SortNumericAscending) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    EXPECT_TRUE(view.SortByColumn(table["col1"]));
+    auto vals = view.Values<float>(table["col1"]);
+    EXPECT_FLOAT_EQ(vals[0], 10.68f);
+    EXPECT_FLOAT_EQ(vals[1], 23.48f);
+    EXPECT_FLOAT_EQ(vals[2], 287.43f);
+}
+
+TEST(Sorting, SortNumericDescending) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    EXPECT_TRUE(view.SortByColumn(table["col1"], false));
+    auto vals = view.Values<float>(table["col1"]);
+    EXPECT_FLOAT_EQ(vals[0], 287.43f);
+    EXPECT_FLOAT_EQ(vals[1], 23.48f);
+    EXPECT_FLOAT_EQ(vals[2], 10.68f);
+}
+
+TEST(Sorting, SortNumericSubset) {
+    Table table(test_path("ivoa_example.xml"));
+
+    // Ascending sort
+    auto view = table.View();
+    view.NumericFilter(table["col1"], 11, 300);
+    EXPECT_TRUE(view.SortByColumn(table["col1"]));
+    auto vals = view.Values<float>(table["col1"]);
+    EXPECT_FLOAT_EQ(vals[0], 23.48f);
+    EXPECT_FLOAT_EQ(vals[1], 287.43f);
+}
+
+TEST(Sorting, SortStringAscending) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    EXPECT_TRUE(view.SortByColumn(table["col3"]));
+    auto vals = view.Values<string>(table["col3"]);
+    EXPECT_EQ(vals[0], "N 224");
+    EXPECT_EQ(vals[1], "N 598");
+    EXPECT_EQ(vals[2], "N 6744");
+}
+
+TEST(Sorting, SortStringDescending) {
+    Table table(test_path("ivoa_example.xml"));
+
+    auto view = table.View();
+    EXPECT_TRUE(view.SortByColumn(table["col3"], false));
+    auto vals = view.Values<string>(table["col3"]);
+    EXPECT_EQ(vals[0], "N 6744");
+    EXPECT_EQ(vals[1], "N 598");
+    EXPECT_EQ(vals[2], "N 224");
+}
+
+TEST(Sorting, SortStringSubset) {
+    Table table(test_path("ivoa_example.xml"));
+
+    // Ascending sort
+    auto view = table.View();
+    view.NumericFilter(table["col1"], 11, 300);
+    EXPECT_TRUE(view.SortByColumn(table["col3"]));
+    auto vals = view.Values<string>(table["col3"]);
+    EXPECT_EQ(vals[0], "N 598");
+    EXPECT_EQ(vals[1], "N 6744");
 }
 
 int main(int argc, char** argv) {
