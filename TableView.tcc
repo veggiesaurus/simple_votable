@@ -19,7 +19,7 @@ std::vector<T> TableView::Values(const Column* column, int64_t start, int64_t en
 
     if (_is_subset) {
         int64_t N = _subset_indices.size();
-        int64_t begin_index = clamp2(start, 0L, N - 1);
+        int64_t begin_index = clamp2(start, 0LL, N - 1);
         int64_t end_index = clamp2(end, begin_index, N - 1);
         if (end < 0) {
             end_index = _subset_indices.size() - 1;
@@ -37,7 +37,7 @@ std::vector<T> TableView::Values(const Column* column, int64_t start, int64_t en
         return values;
     } else {
         int64_t N = data_column->entries.size();
-        int64_t begin_index = clamp2(start, 0L, N - 1);
+        int64_t begin_index = clamp2(start, 0LL, N - 1);
         int64_t end_index = clamp2(end, begin_index, N - 1);
         if (end < 0) {
             end_index = N - 1;
