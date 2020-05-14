@@ -11,16 +11,24 @@ DataColumn<T>::DataColumn(const std::string& name_chr): Column(name_chr) {
     // Assign type based on template type or traits
     if constexpr(std::is_same_v<T, std::string>) {
         data_type = STRING;
-    } else if constexpr(std::is_same_v<T, float>) {
-        data_type = FP32;
+    } else if constexpr(std::is_same_v<T, double>) {
+        data_type = DOUBLE;
     } else if constexpr(std::is_floating_point_v<T>) {
         data_type = FLOAT_GENERIC;
-    } else if constexpr(std::is_same_v<T, int>) {
-        data_type = INT32;
+    } else if constexpr(std::is_same_v<T, int64_t>) {
+        data_type = INT64;
     } else if constexpr(std::is_arithmetic_v<T>) {
-        data_type = ARITHMETIC;
+        data_type = INT_GENERIC;
     } else {
         data_type = UNSUPPORTED;
+    }
+
+    if (data_type == UNSUPPORTED) {
+        data_type_size = 0;
+    } else if (data_type == STRING) {
+        data_type_size = 1;
+    } else {
+        data_type_size = sizeof(T);
     }
 }
 
@@ -29,14 +37,14 @@ T DataColumn<T>::FromText(const pugi::xml_text& text) {
     // Parse properly based on template type or traits
     if constexpr(std::is_same_v<T, std::string>) {
         return text.as_string();
-    } else if constexpr (std::is_same_v<T, float>) {
-        return text.as_float(std::numeric_limits<T>::quiet_NaN());
+    } else if constexpr (std::is_same_v<T, double>) {
+        return text.as_double(std::numeric_limits<T>::quiet_NaN());
     } else if constexpr (std::is_floating_point_v<T>) {
-        return text.as_double((double) std::numeric_limits<T>::quiet_NaN());
-    } else if constexpr(std::is_same_v<T, int>) {
-        return text.as_int(0);
-    } else if constexpr(std::is_arithmetic_v<T>) {
+        return text.as_float(std::numeric_limits<T>::quiet_NaN());
+    } else if constexpr(std::is_same_v<T, int64_t>) {
         return text.as_llong(0);
+    } else if constexpr(std::is_arithmetic_v<T>) {
+        return text.as_int(0);
     } else {
         return T();
     }

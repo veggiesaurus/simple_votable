@@ -23,8 +23,12 @@ std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
     } else if (!array_size_string.empty()) {
         // Can't support array-based column types other than char
         column = make_unique<Column>(name);
-    } else if (type_string == "int" || type_string == "short" || type_string == "unsignedByte") {
+    } else if (type_string == "int") {
         column = make_unique<DataColumn<int>>(name);
+    } else if (type_string == "short") {
+        column = make_unique<DataColumn<int16_t>>(name);
+    } else if (type_string == "unsignedByte") {
+        column = make_unique<DataColumn<uint8_t>>(name);
     } else if (type_string == "long") {
         column = make_unique<DataColumn<int64_t>>(name);
     } else if (type_string == "float") {
@@ -35,12 +39,6 @@ std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
         column = make_unique<Column>(name);
     }
 
-    if (!array_size_string.empty()) {
-        column->data_type_string = fmt::format("{}[{}]", type_string, array_size_string);
-    } else {
-        column->data_type_string = type_string;
-    }
-
     column->id = field.attribute("ID").as_string();
     column->description = field.attribute("description").as_string();
     column->unit = field.attribute("unit").as_string();
@@ -49,10 +47,10 @@ std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
 }
 
 string Column::Info() {
-    auto type_string = data_type == UNSUPPORTED ? fmt::format("{} (unsupported)", data_type_string) : data_type_string;
+    auto type_string = data_type == UNSUPPORTED ? "unsupported" : data_type == STRING ? "string" : fmt::format("{} bytes per entry", data_type_size);
     auto unit_string = unit.empty() ? "" : fmt::format("Unit: {}; ", unit);
     auto description_string = description.empty() ? "" : fmt::format("Description: {}; ", description);
-    return fmt::format("Name: {}; Type: {}; {}{}\n", name, type_string, unit_string, description_string);
+    return fmt::format("Name: {}; Data: {}; {}{}\n", name, type_string, unit_string, description_string);
 }
 
 }

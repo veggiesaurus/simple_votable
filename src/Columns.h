@@ -17,10 +17,10 @@ class DataColumn;
 
 enum DataType {
     STRING,
-    FP32,
+    DOUBLE,
     FLOAT_GENERIC,
-    INT32,
-    ARITHMETIC,
+    INT64,
+    INT_GENERIC,
     UNSUPPORTED
 };
 
@@ -49,6 +49,7 @@ public:
     std::string ref;
     std::string description;
     std::string data_type_string;
+    int data_type_size;
 };
 
 template<class T>
