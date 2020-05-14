@@ -97,6 +97,16 @@ TEST(ParsedTable, CorrectFieldTypes) {
     EXPECT_EQ(table[5]->data_type, FLOAT_GENERIC);
 }
 
+TEST(ParsedTable, CorrectFieldSizes) {
+    Table table(test_path("ivoa_example.xml"));
+    EXPECT_EQ(table[0]->data_type_size, 4);
+    EXPECT_EQ(table[1]->data_type_size, 4);
+    EXPECT_EQ(table[2]->data_type_size, 1);
+    EXPECT_EQ(table[3]->data_type_size, 4);
+    EXPECT_EQ(table[4]->data_type_size, 2);
+    EXPECT_EQ(table[5]->data_type_size, 4);
+}
+
 int main(int argc, char** argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
