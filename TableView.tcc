@@ -1,8 +1,6 @@
 #ifndef VOTABLE_TEST__TABLEVIEW_TCC_
 #define VOTABLE_TEST__TABLEVIEW_TCC_
 
-#include <execution>
-
 namespace carta {
 
 template<class T>

@@ -12,6 +12,8 @@ if(OpenMP_CXX_FOUND)
     set(LINK_LIBS ${LINK_LIBS} PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_PARALLEL")
+
 set(CMAKE_CXX_STANDARD 17)
 set(LINK_LIBS ${LINK_LIBS} pugixml fmt tbb)
 add_executable(votable_test main.cpp Table.cc Table.h Columns.h Columns.cc TableView.cc TableView.h)

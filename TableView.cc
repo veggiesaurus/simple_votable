@@ -2,9 +2,7 @@
 #include "Table.h"
 
 #include <numeric>
-#include <execution>
 #include <algorithm>
-#include <utility>
 
 namespace carta {
 
@@ -206,7 +204,7 @@ bool TableView::SortByColumn(const Column* column, bool ascending) {
 
 bool TableView::SortByIndex() {
     if (!_ordered) {
-        sort(execution::par_unseq, _subset_indices.begin(), _subset_indices.end());
+        sort(_subset_indices.begin(), _subset_indices.end());
     }
     _ordered = true;
     return true;

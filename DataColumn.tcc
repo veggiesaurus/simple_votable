@@ -2,7 +2,6 @@
 #define VOTABLE_TEST__DATACOLUMN_TCC_
 
 #include "Columns.h"
-#include <execution>
 
 namespace carta {
 template<class T>
@@ -32,6 +31,8 @@ T DataColumn<T>::FromText(const pugi::xml_text& text) {
         return text.as_float(std::numeric_limits<T>::quiet_NaN());
     } else if constexpr (std::is_floating_point_v<T>) {
         return text.as_double((double) std::numeric_limits<T>::quiet_NaN());
+    } else if constexpr(std::is_same_v<T, int>) {
+        return text.as_int(0);
     } else if constexpr(std::is_arithmetic_v<T>) {
         return text.as_llong(0);
     } else {
@@ -86,11 +87,11 @@ template<class T>
 void DataColumn<T>::SortIndices(IndexList& indices, bool ascending) const {
     // Perform ascending or descending sort
     if (ascending) {
-        std::sort(std::execution::par_unseq, indices.begin(), indices.end(), [&](int64_t a, int64_t b) {
+        std::sort(indices.begin(), indices.end(), [&](int64_t a, int64_t b) {
             return entries[a] < entries[b];
         });
     } else {
-        std::sort(std::execution::par_unseq, indices.begin(), indices.end(), [&](int64_t a, int64_t b) {
+        std::sort(indices.begin(), indices.end(), [&](int64_t a, int64_t b) {
             return entries[a] > entries[b];
         });
     }

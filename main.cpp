@@ -1,6 +1,5 @@
 #include <chrono>
 #include <numeric>
-#include <algorithm>
 
 #include <fmt/format.h>
 #include "Table.h"
@@ -89,7 +88,7 @@ int main(int argc, char* argv[]) {
                 string first_string;
                 auto t_start_string = chrono::high_resolution_clock::now();
                 auto string_matches = table.View();
-                string_matches.StringFilter(string_column, test_string, false);
+                string_matches.StringFilter(string_column, test_string, true);
                 string_matches.SortByColumn(string_column, true);
                 auto num_string_matches = string_matches.NumRows();
                 if (num_string_matches) {
