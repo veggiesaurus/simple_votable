@@ -3,6 +3,8 @@
 
 #include "Columns.h"
 
+#include <algorithm>
+
 namespace carta {
 template<class T>
 DataColumn<T>::DataColumn(const std::string& name_chr): Column(name_chr) {

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(votable_test)
 
 # if you want to build pugixml in compact mode, manually add include and link dirs.
