@@ -27,6 +27,7 @@ enum DataType {
 class Column {
 public:
     Column(const std::string& name_chr);
+    virtual ~Column() = default;
     virtual void SetFromText(const pugi::xml_text& text, size_t index) {};
     virtual void SetEmpty(size_t index) {};
     virtual void FillFromText(const pugi::xml_text& text) {};
@@ -57,6 +58,7 @@ class DataColumn : public Column {
 public:
     std::vector<T> entries;
     DataColumn(const std::string& name_chr);
+    virtual ~DataColumn() = default;
     void SetFromText(const pugi::xml_text& text, size_t index) override;
     void SetEmpty(size_t index) override;
     void FillFromText(const pugi::xml_text& text) override;

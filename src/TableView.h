@@ -14,7 +14,7 @@ public:
 
     // Filtering
     bool NumericFilter(const Column* column, double min_value, double max_value);
-    bool StringFilter(const Column* column, std::string search_string, bool case_insensitive);
+    bool StringFilter(const Column* column, std::string search_string, bool case_insensitive = false);
 
     bool Invert();
     bool Combine(const TableView& second);
