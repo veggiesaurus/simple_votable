@@ -166,18 +166,6 @@ TEST(ParsedTable, CorrectDataValues) {
     EXPECT_EQ(col5_vals.size(), 3);
     EXPECT_EQ(col5_vals[0], 5);
     EXPECT_EQ(col5_vals[1], 6);
-
-    EXPECT_NE(DataColumn<float>::TryCast(table["col1"]), nullptr);
-    EXPECT_EQ(DataColumn<double>::TryCast(table["col1"]), nullptr);
-
-    EXPECT_NE(DataColumn<string>::TryCast(table["col3"]), nullptr);
-    EXPECT_EQ(DataColumn<int>::TryCast(table["col3"]), nullptr);
-
-    EXPECT_NE(DataColumn<int>::TryCast(table["col4"]), nullptr);
-    EXPECT_EQ(DataColumn<string>::TryCast(table["col4"]), nullptr);
-
-    EXPECT_NE(DataColumn<int16_t>::TryCast(table["col5"]), nullptr);
-    EXPECT_EQ(DataColumn<int>::TryCast(table["col5"]), nullptr);
 }
 
 TEST(Filtering, FailOnWrongFilterType) {
@@ -357,6 +345,34 @@ TEST(Sorting, SortStringSubset) {
     auto vals = view.Values<string>(table["col3"]);
     EXPECT_EQ(vals[0], "N 598");
     EXPECT_EQ(vals[1], "N 6744");
+}
+
+TEST(Arrays, ParseArrayFile) {
+    Table table(test_path("array_types.xml"));
+    EXPECT_TRUE(table.IsValid());
+    EXPECT_EQ(table.NumRows(), 3);
+}
+
+TEST(Arrays, IgnoreArrayTypes) {
+    Table table(test_path("array_types.xml"));
+    EXPECT_EQ(table["FixedArray"]->data_type, UNSUPPORTED);
+    EXPECT_EQ(table["BoundedArray"]->data_type, UNSUPPORTED);
+    EXPECT_EQ(table["UnboundedArray"]->data_type, UNSUPPORTED);
+    EXPECT_EQ(table["FixedArray2D"]->data_type, UNSUPPORTED);
+    EXPECT_EQ(table["BoundedArray2D"]->data_type, UNSUPPORTED);
+    EXPECT_EQ(table["UnboundedArray2D"]->data_type, UNSUPPORTED);
+}
+
+TEST(Arrays, CorrectScalarData) {
+    Table table(test_path("array_types.xml"));
+    auto& scalar1_vals = DataColumn<float>::TryCast(table["Scalar1"])->entries;
+    auto& scalar2_vals = DataColumn<float>::TryCast(table["Scalar2"])->entries;
+    EXPECT_FLOAT_EQ(scalar1_vals[0], 1.0f);
+    EXPECT_FLOAT_EQ(scalar1_vals[1], 2.0f);
+    EXPECT_FLOAT_EQ(scalar1_vals[2], 3.0f);
+    EXPECT_FLOAT_EQ(scalar2_vals[0], 2.0f);
+    EXPECT_FLOAT_EQ(scalar2_vals[1], 4.0f);
+    EXPECT_FLOAT_EQ(scalar2_vals[2], 6.0f);
 }
 
 int main(int argc, char** argv) {

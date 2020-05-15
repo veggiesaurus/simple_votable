@@ -28,6 +28,7 @@ Table::Table(const string& filename, bool header_only)
 
     }
 }
+
 uint32_t Table::GetMagicNumber(const string& filename) {
     ifstream input_file(filename);
     uint32_t magic_number = 0;

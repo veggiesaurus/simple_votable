@@ -65,20 +65,6 @@ void DataColumn<T>::SetEmpty(size_t index) {
 }
 
 template<class T>
-void DataColumn<T>::FillFromText(const pugi::xml_text& text) {
-    entries.emplace_back(FromText(text));
-}
-
-template<class T>
-void DataColumn<T>::FillEmpty() {
-    if constexpr(std::numeric_limits<T>::has_quiet_NaN) {
-        entries.emplace_back(std::numeric_limits<T>::quiet_NaN());
-    } else {
-        entries.emplace_back(T());
-    }
-}
-
-template<class T>
 void DataColumn<T>::FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stride) {
     // Shifts by the column's offset
     ptr += data_offset;
@@ -115,11 +101,6 @@ void DataColumn<T>::FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stri
 template<class T>
 void DataColumn<T>::Resize(size_t capacity) {
     entries.resize(capacity);
-}
-
-template<class T>
-void DataColumn<T>::Reserve(size_t capacity) {
-    entries.reserve(capacity);
 }
 
 template<class T>
@@ -185,7 +166,6 @@ void DataColumn<T>::FilterIndices(IndexList& existing_indices, bool is_subset, d
                 }
             }
         }
-
         existing_indices.swap(matching_indices);
     }
 }

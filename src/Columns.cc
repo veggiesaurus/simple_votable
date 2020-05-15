@@ -10,6 +10,7 @@ Column::Column(const string& name_chr) {
     name = name_chr;
     data_type = UNSUPPORTED;
     data_type_size = 0;
+    data_offset = 0;
 }
 
 std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
@@ -48,38 +49,6 @@ std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
     return column;
 }
 
-std::unique_ptr<Column> Column::FromFITS(const string& col_name, const string& unit, int col_type, int repeat, size_t data_offset) {
-    unique_ptr<Column> column;
-
-    if (col_type == TSTRING) {
-        if (repeat == 1) {
-            // Single-character strings are treated as byte values
-            column = make_unique<DataColumn<uint8_t>>(col_name);
-        } else {
-            column = make_unique<DataColumn<string>>(col_name);
-            column->data_type_size = repeat;
-        }
-    } else if (repeat > 1) {
-        // Can't support array-based column types
-        column = make_unique<Column>(col_name);
-    } else if (col_type == TFLOAT) {
-        column = make_unique<DataColumn<float>>(col_name);
-    } else if (col_type == TDOUBLE) {
-        column = make_unique<DataColumn<double>>(col_name);
-    } else if (col_type == TLONG) {
-        column = make_unique<DataColumn<int32_t>>(col_name);
-    } else if (col_type == TSHORT) {
-        column = make_unique<DataColumn<int16_t>>(col_name);
-    } else {
-        column = make_unique<Column>(col_name);
-    }
-
-    column->data_offset = data_offset;
-    column->unit = unit;
-
-    return column;
-}
-
 void TrimSpaces(string& str)
 {
     str.erase(str.find_last_not_of(' ') + 1);
@@ -96,18 +65,24 @@ std::unique_ptr<Column> Column::FromFitsPtr(fitsfile* fits_ptr, int column_index
     fits_get_bcolparms(fits_ptr, column_index, col_name, unit, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &status);
     fits_get_coltype(fits_ptr, column_index, &col_type, &col_repeat, &col_width, &status);
 
-    unique_ptr<Column> column;
+    // For non-string fields, the total width of the column is simply the size of one element (width) multiplied by the repeat count
+    auto total_column_width = col_repeat * col_width;
 
-    // TODO: Double-check how array widths are calculated!
+    unique_ptr<Column> column;
 
     if (col_type == TSTRING) {
         if (col_repeat == 1) {
             // Single-character strings are treated as byte values
             column = make_unique<DataColumn<uint8_t>>(col_name);
-        } else {
+        } else if (col_width == col_repeat){
+            // Only support single string columns (i.e. width is same size as repeat size)
             column = make_unique<DataColumn<string>>(col_name);
             column->data_type_size = col_repeat;
+        } else {
+            column = make_unique<Column>(col_name);
         }
+        // Special case: for string fields, the total width is simply the repeat, and the width field indicates how many characters per sub-string
+        total_column_width = col_repeat;
     } else if (col_repeat > 1) {
         // Can't support array-based column types
         column = make_unique<Column>(col_name);
@@ -122,6 +97,8 @@ std::unique_ptr<Column> Column::FromFitsPtr(fitsfile* fits_ptr, int column_index
     } else {
         column = make_unique<Column>(col_name);
     }
+
+    // TODO: add additional type support (uint16_t, uint32_t, int16_t, uint64_t)
 
     column->data_offset = data_offset;
     column->unit = unit;
@@ -138,7 +115,7 @@ std::unique_ptr<Column> Column::FromFitsPtr(fitsfile* fits_ptr, int column_index
     TrimSpaces(column->ucd);
 
     // increment data offset for the next column
-    data_offset += col_width;
+    data_offset += total_column_width;
     return column;
 }
 

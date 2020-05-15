@@ -30,8 +30,12 @@ if (test)
     find_package(GTest)
     include_directories(${GTEST_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} src)
 
-    add_executable(table_test test/TestTable.cc ${SRC_FILES})
-    target_link_libraries(table_test ${LINK_LIBS} gtest gtest_main)
+    add_executable(test_votable test/TestVOTable.cc ${SRC_FILES})
+    target_link_libraries(test_votable ${LINK_LIBS} gtest gtest_main)
 
-    add_test(NAME TableTest COMMAND table_test)
+    add_executable(test_fits test/TestFITS.cc ${SRC_FILES})
+    target_link_libraries(test_fits ${LINK_LIBS} gtest gtest_main)
+
+    add_test(NAME TestVOTable COMMAND test_votable)
+    add_test(NAME TestFITS COMMAND test_fits)
 endif (test)
