@@ -68,32 +68,32 @@ template<class T>
 void DataColumn<T>::FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stride) {
     // Shifts by the column's offset
     ptr += data_offset;
+    T* val_ptr = entries.data();
 
     if (!stride || !data_type_size || num_rows > entries.size()) {
         return;
     }
 
-    // Copy data from buffer, taking column stride into account
-    T* val_ptr = entries.data();
+    // Convert from big-endian to little-endian if the data type holds multiple bytes.
+    // The constexpr qualifier means that the if statements will be evaluated at compile-time to avoid branching
     for (auto i = 0; i < num_rows; i++) {
-        memcpy(val_ptr + i, ptr + stride * i, sizeof(T));
-    }
-
-    // Convert from big-endian to little-endian if the data type holds multiple bytes
-    if (data_type_size == 2) {
-        for (auto i = 0; i < num_rows; i++) {
-            uint16_t* int_ptr = (uint16_t*) val_ptr + i;
-            *int_ptr = __builtin_bswap16(*int_ptr);
-        }
-    } else if (data_type_size == 4) {
-        for (auto i = 0; i < num_rows; i++) {
-            uint32_t* int_ptr = (uint32_t*) val_ptr + i;
-            *int_ptr = __builtin_bswap32(*int_ptr);
-        }
-    } else if (data_type_size == 8) {
-        for (auto i = 0; i < num_rows; i++) {
-            uint64_t* int_ptr = (uint64_t*) val_ptr + i;
-            *int_ptr = __builtin_bswap64(*int_ptr);
+        if constexpr (sizeof(T) == 2) {
+            uint16_t temp_val;
+            memcpy(&temp_val, ptr + stride * i, sizeof(T));
+            temp_val = __builtin_bswap16(temp_val);
+            entries[i] = *((T*) &temp_val);
+        } else if constexpr(sizeof(T) == 4) {
+            uint32_t temp_val;
+            memcpy(&temp_val, ptr + stride * i, sizeof(T));
+            temp_val = __builtin_bswap32(temp_val);
+            entries[i] = *((T*) &temp_val);
+        } else if constexpr(sizeof(T) == 8) {
+            uint64_t temp_val;
+            memcpy(&temp_val, ptr + stride * i, sizeof(T));
+            temp_val = __builtin_bswap64(temp_val);
+            entries[i] = *((T*) &temp_val);
+        } else {
+            memcpy(val_ptr + i, ptr + stride * i, sizeof(T));
         }
     }
 }
