@@ -22,8 +22,8 @@ int main(int argc, char* argv[]) {
     auto t_end = chrono::high_resolution_clock::now();
     double dt = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
     if (table.IsValid()) {
-        table.PrintInfo(false);
-        fmt::print("Read {} {} in {} ms. Table dimensions: {} x {}\n", header_only ? "header of" : "table", filename, dt, table.NumRows(), table.NumColumns());
+        //table.PrintInfo(false);
+        fmt::print("Read {} {} in {:.2f} ms. Table dimensions: {} x {}\n", header_only ? "header of" : "table", filename, dt, table.NumRows(), table.NumColumns());
 
         auto first_column = table[column_to_sum];
         auto second_column = table[column_to_sum2];

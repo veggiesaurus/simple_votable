@@ -1,12 +1,13 @@
 #ifndef VOTABLE_TEST__COLUMNS_H_
 #define VOTABLE_TEST__COLUMNS_H_
 
-#include <pugixml.hpp>
 #include <string>
 #include <vector>
 #include <limits>
 #include <cmath>
 #include <type_traits>
+#include <pugixml.hpp>
+#include <fitsio.h>
 #include <fmt/format.h>
 
 namespace carta {
@@ -32,6 +33,7 @@ public:
     virtual void SetEmpty(size_t index) {};
     virtual void FillFromText(const pugi::xml_text& text) {};
     virtual void FillEmpty() {};
+    virtual void FillFromBuffer(const uint8_t * ptr, int num_rows, size_t stride) {};
     virtual void Resize(size_t capacity) {};
     virtual void Reserve(size_t capacity) {};
     virtual size_t NumEntries() const { return 0; };
@@ -41,6 +43,8 @@ public:
 
     // Factory for constructing a column from a <FIELD> node
     static std::unique_ptr<Column> FromField(const pugi::xml_node& field);
+    static std::unique_ptr<Column> FromFITS(const std::string& col_name, const std::string& unit, int col_type, int repeat, size_t data_offset);
+    static std::unique_ptr<Column> FromFitsPtr(fitsfile* fits_ptr, int column_index, size_t& data_offset);
 
     DataType data_type;
     std::string name;
@@ -50,7 +54,8 @@ public:
     std::string ref;
     std::string description;
     std::string data_type_string;
-    int data_type_size;
+    size_t data_type_size;
+    size_t data_offset;
 };
 
 template<class T>
@@ -63,6 +68,7 @@ public:
     void SetEmpty(size_t index) override;
     void FillFromText(const pugi::xml_text& text) override;
     void FillEmpty() override;
+    void FillFromBuffer(const uint8_t * ptr, int num_rows, size_t stride) override;
     void Resize(size_t capacity) override;
     void Reserve(size_t capacity) override;
     size_t NumEntries() const override;

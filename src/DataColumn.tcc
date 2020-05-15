@@ -79,6 +79,40 @@ void DataColumn<T>::FillEmpty() {
 }
 
 template<class T>
+void DataColumn<T>::FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stride) {
+    // Shifts by the column's offset
+    ptr += data_offset;
+
+    if (!stride || !data_type_size || num_rows > entries.size()) {
+        return;
+    }
+
+    // Copy data from buffer, taking column stride into account
+    T* val_ptr = entries.data();
+    for (auto i = 0; i < num_rows; i++) {
+        memcpy(val_ptr + i, ptr + stride * i, sizeof(T));
+    }
+
+    // Convert from big-endian to little-endian if the data type holds multiple bytes
+    if (data_type_size == 2) {
+        for (auto i = 0; i < num_rows; i++) {
+            uint16_t* int_ptr = (uint16_t*) val_ptr + i;
+            *int_ptr = __builtin_bswap16(*int_ptr);
+        }
+    } else if (data_type_size == 4) {
+        for (auto i = 0; i < num_rows; i++) {
+            uint32_t* int_ptr = (uint32_t*) val_ptr + i;
+            *int_ptr = __builtin_bswap32(*int_ptr);
+        }
+    } else if (data_type_size == 8) {
+        for (auto i = 0; i < num_rows; i++) {
+            uint64_t* int_ptr = (uint64_t*) val_ptr + i;
+            *int_ptr = __builtin_bswap64(*int_ptr);
+        }
+    }
+}
+
+template<class T>
 void DataColumn<T>::Resize(size_t capacity) {
     entries.resize(capacity);
 }
@@ -95,6 +129,10 @@ size_t DataColumn<T>::NumEntries() const {
 
 template<class T>
 void DataColumn<T>::SortIndices(IndexList& indices, bool ascending) const {
+    if (indices.empty() || entries.empty()) {
+        return;
+    }
+
     // Perform ascending or descending sort
     if (ascending) {
         std::sort(indices.begin(), indices.end(), [&](int64_t a, int64_t b) {

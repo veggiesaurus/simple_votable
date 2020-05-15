@@ -49,6 +49,7 @@ bool TableView::StringFilter(const Column* column, string search_string, bool ca
 
     auto string_column = DataColumn<string>::TryCast(column);
     if (!string_column) {
+        _is_subset = true;
         return false;
     }
     size_t num_entries = string_column->entries.size();

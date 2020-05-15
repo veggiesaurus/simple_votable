@@ -16,7 +16,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_PARALLEL")
 
 set(CMAKE_CXX_STANDARD 17)
 link_directories(/usr/local/lib)
-set(LINK_LIBS ${LINK_LIBS} pugixml fmt tbb)
+set(LINK_LIBS ${LINK_LIBS} pugixml fmt tbb cfitsio)
 
 set(SRC_FILES src/Table.cc src/Columns.cc src/TableView.cc)
 

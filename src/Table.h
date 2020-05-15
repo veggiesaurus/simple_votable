@@ -8,6 +8,9 @@
 #include "TableView.h"
 
 #define MAX_HEADER_SIZE (64 * 1024)
+// Valid for little-endian only
+#define XML_MAGIC_NUMBER 0x6D783F3C
+#define FITS_MAGIC_NUMBER 0x504D4953
 
 namespace carta {
 
@@ -28,9 +31,11 @@ public:
     const Column* operator[](const std::string& name_or_id) const;
 
 protected:
-
+    void ConstructFromXML(bool header_only = false);
     bool PopulateFields(const pugi::xml_node& table);
     bool PopulateRows(const pugi::xml_node& table);
+
+    void ConstructFromFITS(bool header_only = false);
 
     bool _valid;
     int64_t _num_rows;
@@ -39,6 +44,7 @@ protected:
     std::unordered_map<std::string, Column*> _column_name_map;
     std::unordered_map<std::string, Column*> _column_id_map;
     static std::string GetHeader(const std::string& filename);
+    static uint32_t GetMagicNumber(const std::string& filename) ;
 };
 }
 #endif //VOTABLE_TEST__TABLE_H_

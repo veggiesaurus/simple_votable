@@ -1,5 +1,6 @@
 #include <memory>
 #include "Columns.h"
+#include <fitsio.h>
 #include "DataColumn.tcc"
 
 namespace carta {
@@ -8,6 +9,7 @@ using namespace std;
 Column::Column(const string& name_chr) {
     name = name_chr;
     data_type = UNSUPPORTED;
+    data_type_size = 0;
 }
 
 std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
@@ -46,11 +48,135 @@ std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
     return column;
 }
 
+std::unique_ptr<Column> Column::FromFITS(const string& col_name, const string& unit, int col_type, int repeat, size_t data_offset) {
+    unique_ptr<Column> column;
+
+    if (col_type == TSTRING) {
+        if (repeat == 1) {
+            // Single-character strings are treated as byte values
+            column = make_unique<DataColumn<uint8_t>>(col_name);
+        } else {
+            column = make_unique<DataColumn<string>>(col_name);
+            column->data_type_size = repeat;
+        }
+    } else if (repeat > 1) {
+        // Can't support array-based column types
+        column = make_unique<Column>(col_name);
+    } else if (col_type == TFLOAT) {
+        column = make_unique<DataColumn<float>>(col_name);
+    } else if (col_type == TDOUBLE) {
+        column = make_unique<DataColumn<double>>(col_name);
+    } else if (col_type == TLONG) {
+        column = make_unique<DataColumn<int32_t>>(col_name);
+    } else if (col_type == TSHORT) {
+        column = make_unique<DataColumn<int16_t>>(col_name);
+    } else {
+        column = make_unique<Column>(col_name);
+    }
+
+    column->data_offset = data_offset;
+    column->unit = unit;
+
+    return column;
+}
+
+void TrimSpaces(string& str)
+{
+    str.erase(str.find_last_not_of(' ') + 1);
+}
+
+std::unique_ptr<Column> Column::FromFitsPtr(fitsfile* fits_ptr, int column_index, size_t& data_offset) {
+    int status = 0;
+    char col_name[80];
+    char unit[80];
+    int col_type;
+    long col_repeat;
+    long col_width;
+    // get column name, unit, type and sizes
+    fits_get_bcolparms(fits_ptr, column_index, col_name, unit, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &status);
+    fits_get_coltype(fits_ptr, column_index, &col_type, &col_repeat, &col_width, &status);
+
+    unique_ptr<Column> column;
+
+    // TODO: Double-check how array widths are calculated!
+
+    if (col_type == TSTRING) {
+        if (col_repeat == 1) {
+            // Single-character strings are treated as byte values
+            column = make_unique<DataColumn<uint8_t>>(col_name);
+        } else {
+            column = make_unique<DataColumn<string>>(col_name);
+            column->data_type_size = col_repeat;
+        }
+    } else if (col_repeat > 1) {
+        // Can't support array-based column types
+        column = make_unique<Column>(col_name);
+    } else if (col_type == TFLOAT) {
+        column = make_unique<DataColumn<float>>(col_name);
+    } else if (col_type == TDOUBLE) {
+        column = make_unique<DataColumn<double>>(col_name);
+    } else if (col_type == TLONG) {
+        column = make_unique<DataColumn<int32_t>>(col_name);
+    } else if (col_type == TSHORT) {
+        column = make_unique<DataColumn<int16_t>>(col_name);
+    } else {
+        column = make_unique<Column>(col_name);
+    }
+
+    column->data_offset = data_offset;
+    column->unit = unit;
+    TrimSpaces(column->unit);
+
+    // Optional keywords for VOTable compatibility: description and UCD
+    char keyword[80];
+    fits_read_key(fits_ptr, TSTRING, fmt::format("TCOMM{}", column_index).c_str(), keyword, nullptr, &status);
+    column->description = keyword;
+    fits_read_key(fits_ptr, TSTRING, fmt::format("TUCD{}", column_index).c_str(), keyword, nullptr, &status);
+    column->ucd = keyword;
+
+    TrimSpaces(column->description);
+    TrimSpaces(column->ucd);
+
+    // increment data offset for the next column
+    data_offset += col_width;
+    return column;
+}
+
 string Column::Info() {
     auto type_string = data_type == UNSUPPORTED ? "unsupported" : data_type == STRING ? "string" : fmt::format("{} bytes per entry", data_type_size);
     auto unit_string = unit.empty() ? "" : fmt::format("Unit: {}; ", unit);
     auto description_string = description.empty() ? "" : fmt::format("Description: {}; ", description);
     return fmt::format("Name: {}; Data: {}; {}{}\n", name, type_string, unit_string, description_string);
+}
+
+// Specialisation for string type, in order to trim whitespace at the end of the entry
+template<>
+void DataColumn<string>::FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stride) {
+    // Shifts by the column's offset
+    ptr += data_offset;
+
+    if (!stride || !data_type_size || num_rows > entries.size()) {
+        return;
+    }
+
+    for (auto i = 0; i < num_rows; i++) {
+        auto& s = entries[i];
+
+        int string_size = 0;
+        // Find required string size by trimming whitespace
+        for (auto j = data_type_size -1; j >= 0; j--) {
+            if (ptr[j] != ' ') {
+                string_size = j + 1;
+                break;
+            }
+        }
+        // Fill string with the trimmed substring
+        if (string_size > 0) {
+            s.resize(string_size);
+            memcpy(s.data(), ptr, string_size);
+        }
+        ptr+= stride;
+    }
 }
 
 }
