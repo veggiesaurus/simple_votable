@@ -27,7 +27,7 @@ std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
         // Can't support array-based column types other than char
         column = make_unique<Column>(name);
     } else if (type_string == "int") {
-        column = make_unique<DataColumn<int>>(name);
+        column = make_unique<DataColumn<int32_t>>(name);
     } else if (type_string == "short") {
         column = make_unique<DataColumn<int16_t>>(name);
     } else if (type_string == "unsignedByte") {
@@ -49,9 +49,29 @@ std::unique_ptr<Column> Column::FromField(const pugi::xml_node& field) {
     return column;
 }
 
-void TrimSpaces(string& str)
-{
+void TrimSpaces(string& str) {
     str.erase(str.find_last_not_of(' ') + 1);
+}
+
+// Create a column based on the FITS column data type
+std::unique_ptr<Column> ColumnFromFitsType(int type, const string& col_name) {
+    switch (type) {
+        case TBYTE: return make_unique<DataColumn<uint8_t>>(col_name);
+        case TSBYTE: return make_unique<DataColumn<int8_t>>(col_name);
+        case TUSHORT: return make_unique<DataColumn<uint16_t>>(col_name);
+        case TSHORT: return make_unique<DataColumn<int16_t>>(col_name);
+        // TODO: What are the appropriate widths for TINT and TUINT?
+        case TULONG: return make_unique<DataColumn<uint32_t>>(col_name);
+        case TLONG: return make_unique<DataColumn<int32_t>>(col_name);
+        case TFLOAT: return make_unique<DataColumn<float>>(col_name);
+        case TULONGLONG: return make_unique<DataColumn<uint64_t>>(col_name);
+        case TLONGLONG: return make_unique<DataColumn<int64_t>>(col_name);
+        case TDOUBLE: return make_unique<DataColumn<double>>(col_name);
+        // TODO: Consider supporting complex numbers through std::complex
+        case TCOMPLEX:
+        case TDBLCOMPLEX:
+        default: return make_unique<Column>(col_name);
+    }
 }
 
 std::unique_ptr<Column> Column::FromFitsPtr(fitsfile* fits_ptr, int column_index, size_t& data_offset) {
@@ -74,31 +94,22 @@ std::unique_ptr<Column> Column::FromFitsPtr(fitsfile* fits_ptr, int column_index
         if (col_repeat == 1) {
             // Single-character strings are treated as byte values
             column = make_unique<DataColumn<uint8_t>>(col_name);
-        } else if (col_width == col_repeat){
+        } else if (col_width == col_repeat) {
             // Only support single string columns (i.e. width is same size as repeat size)
             column = make_unique<DataColumn<string>>(col_name);
             column->data_type_size = col_repeat;
         } else {
-            column = make_unique<Column>(col_name);
+            column = ColumnFromFitsType(col_type, col_name);
+            make_unique<Column>(col_name);
         }
         // Special case: for string fields, the total width is simply the repeat, and the width field indicates how many characters per sub-string
         total_column_width = col_repeat;
     } else if (col_repeat > 1) {
         // Can't support array-based column types
         column = make_unique<Column>(col_name);
-    } else if (col_type == TFLOAT) {
-        column = make_unique<DataColumn<float>>(col_name);
-    } else if (col_type == TDOUBLE) {
-        column = make_unique<DataColumn<double>>(col_name);
-    } else if (col_type == TLONG) {
-        column = make_unique<DataColumn<int32_t>>(col_name);
-    } else if (col_type == TSHORT) {
-        column = make_unique<DataColumn<int16_t>>(col_name);
     } else {
-        column = make_unique<Column>(col_name);
+        column = ColumnFromFitsType(col_type, col_name);
     }
-
-    // TODO: add additional type support (uint16_t, uint32_t, int16_t, uint64_t)
 
     column->data_offset = data_offset;
     column->unit = unit;
@@ -141,7 +152,7 @@ void DataColumn<string>::FillFromBuffer(const uint8_t* ptr, int num_rows, size_t
 
         int string_size = 0;
         // Find required string size by trimming whitespace
-        for (auto j = data_type_size -1; j >= 0; j--) {
+        for (auto j = data_type_size - 1; j >= 0; j--) {
             if (ptr[j] != ' ') {
                 string_size = j + 1;
                 break;
@@ -152,7 +163,7 @@ void DataColumn<string>::FillFromBuffer(const uint8_t* ptr, int num_rows, size_t
             s.resize(string_size);
             memcpy(s.data(), ptr, string_size);
         }
-        ptr+= stride;
+        ptr += stride;
     }
 }
 
