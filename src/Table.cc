@@ -21,7 +21,7 @@ Table::Table(const string& filename, bool header_only)
 
     auto magic_number = GetMagicNumber(filename);
     if (magic_number == FITS_MAGIC_NUMBER) {
-        ConstructFromFITS(header_only);
+        _valid = ConstructFromFITS(header_only);
     } else if (magic_number == XML_MAGIC_NUMBER) {
         ConstructFromXML(header_only);
     } else {
@@ -179,56 +179,65 @@ bool Table::PopulateRows(const pugi::xml_node& table) {
     return true;
 }
 
-void Table::ConstructFromFITS(bool header_only) {
+bool Table::ConstructFromFITS(bool header_only) {
     fitsfile* file_ptr = nullptr;
     int status = 0;
-    // Attempt to open the first table HDU
-    if (!fits_open_table(&file_ptr, _filename.c_str(), READONLY, &status)) {
-        char ext_name[80];
-        // read table extension name
-        if (!fits_read_key(file_ptr, TSTRING, "EXTNAME", ext_name, nullptr, &status)) {
-            // Read table dimensions
-            long long rows = 0;
-            int num_cols = 0;
-            int total_width = 0;
-            fits_get_num_rowsll(file_ptr, &rows, &status);
-            fits_get_num_cols(file_ptr, &num_cols, &status);
-            fits_read_key(file_ptr, TINT, "NAXIS1", &total_width, nullptr, &status);
-            _num_rows = header_only ? 0 : rows;
-            if (num_cols > 0) {
-                // Keep track of column offset when reading data
-                size_t col_offset = 0;
-                for (auto i = 1; i <= num_cols; i++) {
-                    auto& column = _columns.emplace_back(Column::FromFitsPtr(file_ptr, i, col_offset));
-                    // Resize column's entries vector to contain all rows
-                    column->Resize(_num_rows);
-                    // Add columns to map
-                    if (!column->name.empty()) {
-                        _column_name_map[column->name] = column.get();
-                    }
-                }
-                if (_num_rows) {
-                    // Read entire table into a memory buffer
-                    std::size_t size_bytes = total_width * _num_rows;
-                    auto buffer = make_unique<uint8_t[]>(size_bytes);
-                    fits_read_tblbytes(file_ptr, 1, 1, size_bytes, buffer.get(), &status);
-
-                    // Dynamic schedule of OpenMP division, as some columns will be easier to parse than others
-#pragma omp parallel for default(none) schedule(dynamic) shared(num_cols, buffer, _num_rows, total_width)
-                    for (auto i = 0; i < num_cols; i++) {
-                        _columns[i]->FillFromBuffer(buffer.get(), _num_rows, total_width);
-                    }
-                }
-                _valid = true;
-            }
-
-        } else {
-            fmt::print("Can't find a binary table HDU in {}\n", _filename);
-        }
-        fits_close_file(file_ptr, &status);
-    } else {
+    // Attempt to open the first table HDU. status = 0 means no error
+    if (fits_open_table(&file_ptr, _filename.c_str(), READONLY, &status)) {
         fmt::print("Could not open FITS file {}\n", _filename);
+        return false;
     }
+
+    char ext_name[80];
+    // read table extension name
+    if (fits_read_key(file_ptr, TSTRING, "EXTNAME", ext_name, nullptr, &status)) {
+        fmt::print("Can't find a binary table HDU in {}\n", _filename);
+        fits_close_file(file_ptr, &status);
+        return false;
+    }
+
+    // Read table dimensions
+    long long rows = 0;
+    int num_cols = 0;
+    int total_width = 0;
+    fits_get_num_rowsll(file_ptr, &rows, &status);
+    fits_get_num_cols(file_ptr, &num_cols, &status);
+    fits_read_key(file_ptr, TINT, "NAXIS1", &total_width, nullptr, &status);
+    _num_rows = header_only ? 0 : rows;
+
+    if (num_cols <= 0) {
+        fits_close_file(file_ptr, &status);
+        return false;
+    }
+
+    // Keep track of column offset when reading data
+    size_t col_offset = 0;
+    for (auto i = 1; i <= num_cols; i++) {
+        auto& column = _columns.emplace_back(Column::FromFitsPtr(file_ptr, i, col_offset));
+        // Resize column's entries vector to contain all rows
+        column->Resize(_num_rows);
+        // Add columns to map
+        if (!column->name.empty()) {
+            _column_name_map[column->name] = column.get();
+        }
+    }
+    if (_num_rows) {
+        // Read entire table into a memory buffer
+        std::size_t size_bytes = total_width * _num_rows;
+        auto buffer = make_unique<uint8_t[]>(size_bytes);
+        fits_read_tblbytes(file_ptr, 1, 1, size_bytes, buffer.get(), &status);
+        // File is no longer needed after table is read
+        fits_close_file(file_ptr, &status);
+
+        // Dynamic schedule of OpenMP division, as some columns will be easier to parse than others
+#pragma omp parallel for default(none) schedule(dynamic) shared(num_cols, buffer, _num_rows, total_width)
+        for (auto i = 0; i < num_cols; i++) {
+            _columns[i]->FillFromBuffer(buffer.get(), _num_rows, total_width);
+        }
+    } else {
+        fits_close_file(file_ptr, &status);
+    }
+    return true;
 }
 
 bool Table::IsValid() const {
@@ -239,7 +248,7 @@ void Table::PrintInfo(bool skip_unknowns) const {
     fmt::print("Rows: {}; Columns: {};\n", _num_rows, _columns.size());
     for (auto& column: _columns) {
         if (!skip_unknowns || column->data_type != UNSUPPORTED) {
-            cout<<column->Info();
+            cout << column->Info();
         }
     }
 }

@@ -35,7 +35,7 @@ protected:
     bool PopulateFields(const pugi::xml_node& table);
     bool PopulateRows(const pugi::xml_node& table);
 
-    void ConstructFromFITS(bool header_only = false);
+    bool ConstructFromFITS(bool header_only = false);
 
     bool _valid;
     int64_t _num_rows;
