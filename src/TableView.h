@@ -13,10 +13,11 @@ public:
     TableView(const Table& table, const IndexList& index_list, bool ordered = true);
 
     // Filtering
-    bool NumericFilter(const Column* column, double min_value, double max_value);
+    bool NumericFilter(const Column* column, ComparisonOperator comparison_operator, double value, double secondary_value = 0.0);
     bool StringFilter(const Column* column, std::string search_string, bool case_insensitive = false);
 
     bool Invert();
+    void Reset();
     bool Combine(const TableView& second);
 
     // Sorting

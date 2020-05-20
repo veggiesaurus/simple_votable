@@ -21,7 +21,7 @@ TableView::TableView(const Table& table, const IndexList& index_list, bool order
     _is_subset = true;
 }
 
-bool TableView::NumericFilter(const Column* column, double min_value, double max_value) {
+bool TableView::NumericFilter(const Column* column, ComparisonOperator comparison_operator, double value, double secondary_value) {
     if (!column) {
         return false;
     }
@@ -31,7 +31,7 @@ bool TableView::NumericFilter(const Column* column, double min_value, double max
         return false;
     }
 
-    column->FilterIndices(_subset_indices, _is_subset, min_value, max_value);
+    column->FilterIndices(_subset_indices, _is_subset, comparison_operator, value, secondary_value);
     size_t num_entries = column->NumEntries();
 
     if (_subset_indices.size() == num_entries) {
@@ -150,6 +150,12 @@ bool TableView::Invert() {
         _subset_indices.clear();
     }
     return true;
+}
+
+void TableView::Reset() {
+    _is_subset = false;
+    _subset_indices.clear();
+    _ordered = true;
 }
 
 bool TableView::Combine(const TableView& second) {

@@ -25,17 +25,28 @@ enum DataType {
     UNSUPPORTED
 };
 
+enum ComparisonOperator {
+    EQUAL = 0,
+    NOT_EQUAL = 1,
+    LESSER = 2,
+    GREATER = 3,
+    LESSER_OR_EQUAL = 4,
+    GREATER_OR_EQUAL = 5,
+    RANGE_INCLUSIVE = 6,
+    RANGE_EXCLUSIVE = 7
+};
+
 class Column {
 public:
     Column(const std::string& name_chr);
     virtual ~Column() = default;
     virtual void SetFromText(const pugi::xml_text& text, size_t index) {};
     virtual void SetEmpty(size_t index) {};
-    virtual void FillFromBuffer(const uint8_t * ptr, int num_rows, size_t stride) {};
+    virtual void FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stride) {};
     virtual void Resize(size_t capacity) {};
     virtual size_t NumEntries() const { return 0; };
     virtual void SortIndices(IndexList& indices, bool ascending) const {};
-    virtual void FilterIndices(IndexList& existing_indices, bool is_subset, double min_val, double max_val) const {}
+    virtual void FilterIndices(IndexList& existing_indices, bool is_subset, ComparisonOperator comparison_operator, double value, double secondary_value = 0.0) const {}
     virtual std::string Info();
 
     // Factory for constructing a column from a <FIELD> node
@@ -62,11 +73,11 @@ public:
     virtual ~DataColumn() = default;
     void SetFromText(const pugi::xml_text& text, size_t index) override;
     void SetEmpty(size_t index) override;
-    void FillFromBuffer(const uint8_t * ptr, int num_rows, size_t stride) override;
+    void FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stride) override;
     void Resize(size_t capacity) override;
     size_t NumEntries() const override;
     void SortIndices(IndexList& indices, bool ascending) const override;
-    void FilterIndices(IndexList& existing_indices, bool is_subset, double min_value, double max_value) const override;
+    void FilterIndices(IndexList& existing_indices, bool is_subset, ComparisonOperator comparison_operator, double value, double secondary_value = 0.0) const override;
 
     static const DataColumn<T>* TryCast(const Column* column) {
         if (!column || column->data_type == UNSUPPORTED) {

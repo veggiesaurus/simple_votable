@@ -173,14 +173,14 @@ TEST(Filtering, FailOnWrongFilterType) {
     EXPECT_FALSE(table.View().StringFilter(table["dummy"], "N 224"));
     EXPECT_FALSE(table.View().StringFilter(table["col1"], "N 224"));
 
-    EXPECT_FALSE(table.View().NumericFilter(table["dummy"], 0, 100));
-    EXPECT_FALSE(table.View().NumericFilter(table["col3"], 0, 100));
+    EXPECT_FALSE(table.View().NumericFilter(table["dummy"], RANGE_INCLUSIVE, 0, 100));
+    EXPECT_FALSE(table.View().NumericFilter(table["col3"], RANGE_INCLUSIVE, 0, 100));
 }
 
 TEST(Filtering, PassOnCorrectFilterType) {
     Table table(test_path("ivoa_example.xml"));
     EXPECT_TRUE(table.View().StringFilter(table["col3"], "N 224"));
-    EXPECT_TRUE(table.View().NumericFilter(table["col1"], 0, 100));
+    EXPECT_TRUE(table.View().NumericFilter(table["col1"], RANGE_INCLUSIVE, 0, 100));
 }
 
 TEST(Filtering, CaseSensitiveStringFilter) {
@@ -225,7 +225,7 @@ TEST(Filtering, FilterExtractValues) {
     Table table(test_path("ivoa_example.xml"));
 
     auto view = table.View();
-    view.NumericFilter(table["col1"], 10, NAN);
+    view.NumericFilter(table["col1"], GREATER_OR_EQUAL, 10);
     auto string_vals = view.Values<string>(table["col3"]);
     EXPECT_EQ(string_vals.size(), 3);
     EXPECT_EQ(string_vals[0], "N 224");
@@ -236,27 +236,47 @@ TEST(Filtering, FilterExtractValues) {
     EXPECT_FLOAT_EQ(float_vals[0], 287.43f);
 }
 
-TEST(Filtering, NumericFilterMin) {
+TEST(Filtering, NumericFilterEqual) {
+    Table table(test_path("ivoa_example.xml"));
+    auto view = table.View();
+    view.NumericFilter(table["RA"], EQUAL, 287.43);
+    EXPECT_EQ(view.NumRows(), 1);
+    view.Reset();
+    view.NumericFilter(table["e_RVel"], EQUAL, 3);
+    EXPECT_EQ(view.NumRows(), 1);
+}
+
+TEST(Filtering, NumericFilterNotEqual) {
+    Table table(test_path("ivoa_example.xml"));
+    auto view = table.View();
+    view.NumericFilter(table["RA"], NOT_EQUAL, 287.43);
+    EXPECT_EQ(view.NumRows(), 2);
+    view.Reset();
+    view.NumericFilter(table["e_RVel"], NOT_EQUAL, 3);
+    EXPECT_EQ(view.NumRows(), 2);
+}
+
+TEST(Filtering, NumericFilterGreater) {
     Table table(test_path("ivoa_example.xml"));
 
     auto view = table.View();
-    view.NumericFilter(table["col1"], 10, NAN);
+    view.NumericFilter(table["col1"], GREATER_OR_EQUAL, 10);
     EXPECT_EQ(view.NumRows(), 3);
-    view.NumericFilter(table["col1"], 11, NAN);
+    view.NumericFilter(table["col1"], GREATER_OR_EQUAL, 11);
     EXPECT_EQ(view.NumRows(), 2);
-    view.NumericFilter(table["col1"], 300, NAN);
+    view.NumericFilter(table["col1"], GREATER_OR_EQUAL, 300);
     EXPECT_EQ(view.NumRows(), 0);
 }
 
-TEST(Filtering, NumericFilterMax) {
+TEST(Filtering, NumericFilterLesser) {
     Table table(test_path("ivoa_example.xml"));
 
     auto view = table.View();
-    view.NumericFilter(table["col1"], NAN, 300);
+    view.NumericFilter(table["col1"], LESSER_OR_EQUAL, 300);
     EXPECT_EQ(view.NumRows(), 3);
-    view.NumericFilter(table["col1"], NAN, 11);
+    view.NumericFilter(table["col1"], LESSER_OR_EQUAL, 11);
     EXPECT_EQ(view.NumRows(), 1);
-    view.NumericFilter(table["col1"], NAN, 10);
+    view.NumericFilter(table["col1"], LESSER_OR_EQUAL, 10);
     EXPECT_EQ(view.NumRows(), 0);
 }
 
@@ -264,11 +284,11 @@ TEST(Filtering, NumericFilterRange) {
     Table table(test_path("ivoa_example.xml"));
 
     auto view = table.View();
-    view.NumericFilter(table["col1"], 10, 300);
+    view.NumericFilter(table["col1"], RANGE_INCLUSIVE, 10, 300);
     EXPECT_EQ(view.NumRows(), 3);
-    view.NumericFilter(table["col1"], 11, 300);
+    view.NumericFilter(table["col1"], RANGE_INCLUSIVE, 11, 300);
     EXPECT_EQ(view.NumRows(), 2);
-    view.NumericFilter(table["col1"], 11, 14);
+    view.NumericFilter(table["col1"], RANGE_INCLUSIVE, 11, 14);
     EXPECT_EQ(view.NumRows(), 0);
 }
 
@@ -306,7 +326,7 @@ TEST(Sorting, SortNumericSubset) {
 
     // Ascending sort
     auto view = table.View();
-    view.NumericFilter(table["col1"], 11, 300);
+    view.NumericFilter(table["col1"], RANGE_INCLUSIVE, 11, 300);
     EXPECT_TRUE(view.SortByColumn(table["col1"]));
     auto vals = view.Values<float>(table["col1"]);
     EXPECT_FLOAT_EQ(vals[0], 23.48f);
@@ -340,7 +360,7 @@ TEST(Sorting, SortStringSubset) {
 
     // Ascending sort
     auto view = table.View();
-    view.NumericFilter(table["col1"], 11, 300);
+    view.NumericFilter(table["col1"], ComparisonOperator::RANGE_INCLUSIVE, 11, 300);
     EXPECT_TRUE(view.SortByColumn(table["col3"]));
     auto vals = view.Values<string>(table["col3"]);
     EXPECT_EQ(vals[0], "N 598");

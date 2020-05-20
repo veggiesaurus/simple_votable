@@ -127,41 +127,46 @@ void DataColumn<T>::SortIndices(IndexList& indices, bool ascending) const {
 }
 
 template<class T>
-void DataColumn<T>::FilterIndices(IndexList& existing_indices, bool is_subset, double min_value, double max_value) const {
+void DataColumn<T>::FilterIndices(IndexList& existing_indices, bool is_subset, ComparisonOperator comparison_operator, double value, double secondary_value) const {
     // only apply to template types that are arithmetic
     if constexpr (std::is_arithmetic_v<T>) {
-        T typed_min = min_value;
-        T typed_max = max_value;
+        T typed_value = value;
+        T typed_secondary_value = secondary_value;
 
         IndexList matching_indices;
-
-        if (!std::isfinite(min_value)) {
-            typed_min = std::numeric_limits<T>::lowest();
-        }
-
-        if (!std::isfinite(max_value)) {
-            typed_max = std::numeric_limits<T>::max();
-        }
-
         size_t num_entries = entries.size();
 
         if (is_subset) {
-            // Only iterate through existing indices
             for (auto i: existing_indices) {
                 // Skip invalid entries
                 if (i < 0 || i >= num_entries) {
                     continue;
                 }
                 T val = entries[i];
-                if (val >= typed_min && val <= typed_max) {
+                bool filter_pass = (comparison_operator == EQUAL && val == typed_value)
+                    || (comparison_operator == NOT_EQUAL && val != typed_value)
+                    || (comparison_operator == LESSER && val < typed_value)
+                    || (comparison_operator == GREATER && val > typed_value)
+                    || (comparison_operator == LESSER_OR_EQUAL && val <= typed_value)
+                    || (comparison_operator == GREATER_OR_EQUAL && val >= typed_value)
+                    || (comparison_operator == RANGE_INCLUSIVE && val >= typed_value && val <= typed_secondary_value)
+                    || (comparison_operator == RANGE_EXCLUSIVE && val > typed_value && val < typed_secondary_value);
+                if (filter_pass) {
                     matching_indices.push_back(i);
                 }
             }
         } else {
-            // Iterate through all possible indices
             for (auto i = 0; i < num_entries; i++) {
                 T val = entries[i];
-                if (val >= typed_min && val <= typed_max) {
+                bool filter_pass = (comparison_operator == EQUAL && val == typed_value)
+                    || (comparison_operator == NOT_EQUAL && val != typed_value)
+                    || (comparison_operator == LESSER && val < typed_value)
+                    || (comparison_operator == GREATER && val > typed_value)
+                    || (comparison_operator == LESSER_OR_EQUAL && val <= typed_value)
+                    || (comparison_operator == GREATER_OR_EQUAL && val >= typed_value)
+                    || (comparison_operator == RANGE_INCLUSIVE && val >= typed_value && val <= typed_secondary_value)
+                    || (comparison_operator == RANGE_EXCLUSIVE && val > typed_value && val < typed_secondary_value);
+                if (filter_pass) {
                     matching_indices.push_back(i);
                 }
             }
@@ -169,7 +174,6 @@ void DataColumn<T>::FilterIndices(IndexList& existing_indices, bool is_subset, d
         existing_indices.swap(matching_indices);
     }
 }
-
 }
 
 #endif //VOTABLE_TEST__DATACOLUMN_TCC_

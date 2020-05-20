@@ -23,7 +23,6 @@ int main(int argc, char* argv[]) {
     double dt = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start).count();
     if (table.IsValid()) {
         //table.PrintInfo(false);
-        fmt::print("Read {} {} in {:.2f} ms. Table dimensions: {} x {}\n", header_only ? "header of" : "table", filename, dt, table.NumRows(), table.NumColumns());
 
         auto first_column = table[column_to_sum];
         auto second_column = table[column_to_sum2];
@@ -55,13 +54,11 @@ int main(int argc, char* argv[]) {
 
             double mean = sum_first / table.NumRows();
             double mean2 = sum_second / table.NumRows();
-            fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum, mean, first_column->unit);
-            fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum2, mean2, second_column->unit);
 
             auto t_start_filter = chrono::high_resolution_clock::now();
             auto filtered_table = table.View();
-            filtered_table.NumericFilter(first_column, mean, NAN);
-            filtered_table.NumericFilter(second_column, mean2, NAN);
+            filtered_table.NumericFilter(first_column, GREATER_OR_EQUAL, mean);
+            filtered_table.NumericFilter(second_column, GREATER_OR_EQUAL, mean2);
             auto num_matches = filtered_table.NumRows();
             auto t_end_filter = chrono::high_resolution_clock::now();
             double dt_filter = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(t_end_filter - t_start_filter).count();
@@ -104,6 +101,10 @@ int main(int argc, char* argv[]) {
                            first_string);
             }
 
+            fmt::print("Read {} {} in {:.2f} ms. Table dimensions: {} x {}\n", header_only ? "header of" : "table", filename, dt, table.NumRows(), table.NumColumns());
+
+            fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum, mean, first_column->unit);
+            fmt::print("Mean of column \"{}\": {:.3f} {}\n", column_to_sum2, mean2, second_column->unit);
             fmt::print("{} entries with \"{}\" >= {:.3f} && \"{}\" >= {:.3f}\n",
                        num_matches, first_column->name, mean, second_column->name, mean2);
             fmt::print("Filtering done in {:.2f} ms\n", dt_filter);
