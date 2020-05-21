@@ -8,22 +8,36 @@
 namespace carta {
 template<class T>
 DataColumn<T>::DataColumn(const std::string& name_chr): Column(name_chr) {
-    // Assign type based on template type or traits
+    // Assign type based on template type
     if constexpr(std::is_same_v<T, std::string>) {
         data_type = STRING;
-    } else if constexpr(std::is_same_v<T, double>) {
-        data_type = DOUBLE;
-    } else if constexpr(std::is_floating_point_v<T>) {
-        data_type = FLOAT_GENERIC;
+    } else if constexpr(std::is_same_v<T, uint8_t>) {
+        data_type = UINT8;
+    } else if constexpr(std::is_same_v<T, int8_t>) {
+        data_type = INT8;
+    } else if constexpr(std::is_same_v<T, uint16_t>) {
+        data_type = UINT16;
+    } else if constexpr(std::is_same_v<T, int16_t>) {
+        data_type = INT16;
+    } else if constexpr(std::is_same_v<T, uint32_t>) {
+        data_type = UINT32;
+    } else if constexpr(std::is_same_v<T, int32_t>) {
+        data_type = INT32;
+    } else if constexpr(std::is_same_v<T, uint64_t>) {
+        data_type = UINT64;
     } else if constexpr(std::is_same_v<T, int64_t>) {
         data_type = INT64;
-    } else if constexpr(std::is_arithmetic_v<T>) {
-        data_type = INT_GENERIC;
+    } else if constexpr(std::is_same_v<T, float>) {
+        data_type = FLOAT;
+    } else if constexpr(std::is_same_v<T, double>) {
+        data_type = DOUBLE;
+    } else if constexpr(std::is_same_v<T, bool>) {
+        data_type = BOOL;
     } else {
-        data_type = UNSUPPORTED;
+        data_type = UNKNOWN_TYPE;
     }
 
-    if (data_type == UNSUPPORTED) {
+    if (data_type == UNKNOWN_TYPE) {
         data_type_size = 0;
     } else if (data_type == STRING) {
         data_type_size = 1;

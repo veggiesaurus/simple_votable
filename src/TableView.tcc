@@ -4,7 +4,7 @@
 namespace carta {
 
 template<class T>
-T clamp2(T val, const T& min_val, const T& max_val) {
+T clamp(T val, const T& min_val, const T& max_val) {
     if (val < min_val) { val = min_val; }
     if (val > max_val) { val = max_val; }
     return val;
@@ -19,11 +19,11 @@ std::vector<T> TableView::Values(const Column* column, int64_t start, int64_t en
 
     if (_is_subset) {
         int64_t N = _subset_indices.size();
-        int64_t begin_index = clamp2(start, (int64_t) 0, N);
+        int64_t begin_index = clamp(start, (int64_t) 0, N);
         if (end < 0) {
             end = _subset_indices.size();
         }
-        int64_t end_index = clamp2(end, begin_index, N);
+        int64_t end_index = clamp(end, begin_index, N);
 
         auto begin_it = _subset_indices.begin() + begin_index;
         auto end_it = _subset_indices.begin() + end_index;
@@ -37,11 +37,11 @@ std::vector<T> TableView::Values(const Column* column, int64_t start, int64_t en
         return values;
     } else {
         int64_t N = data_column->entries.size();
-        int64_t begin_index = clamp2(start, (int64_t) 0, N);
+        int64_t begin_index = clamp(start, (int64_t) 0, N);
         if (end < 0) {
             end = N;
         }
-        int64_t end_index = clamp2(end, begin_index, N);
+        int64_t end_index = clamp(end, begin_index, N);
 
         auto begin_it = data_column->entries.begin() + begin_index;
         auto end_it = data_column->entries.begin() + end_index;

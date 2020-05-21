@@ -27,7 +27,7 @@ bool TableView::NumericFilter(const Column* column, ComparisonOperator compariso
     }
 
     // Only filter for arithmetic types
-    if (column->data_type == UNSUPPORTED || column->data_type == STRING) {
+    if (column->data_type == UNKNOWN_TYPE || column->data_type == STRING) {
         return false;
     }
 
@@ -192,7 +192,7 @@ bool TableView::SortByColumn(const Column* column, bool ascending) {
         return false;
     }
 
-    if (column->data_type == UNSUPPORTED) {
+    if (column->data_type == UNKNOWN_TYPE) {
         return false;
     }
 

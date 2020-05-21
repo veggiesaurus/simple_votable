@@ -8,7 +8,7 @@ using namespace std;
 
 Column::Column(const string& name_chr) {
     name = name_chr;
-    data_type = UNSUPPORTED;
+    data_type = UNKNOWN_TYPE;
     data_type_size = 0;
     data_offset = 0;
 }
@@ -131,7 +131,7 @@ std::unique_ptr<Column> Column::FromFitsPtr(fitsfile* fits_ptr, int column_index
 }
 
 string Column::Info() {
-    auto type_string = data_type == UNSUPPORTED ? "unsupported" : data_type == STRING ? "string" : fmt::format("{} bytes per entry", data_type_size);
+    auto type_string = data_type == UNKNOWN_TYPE ? "unsupported" : data_type == STRING ? "string" : fmt::format("{} bytes per entry", data_type_size);
     auto unit_string = unit.empty() ? "" : fmt::format("Unit: {}; ", unit);
     auto description_string = description.empty() ? "" : fmt::format("Description: {}; ", description);
     return fmt::format("Name: {}; Data: {}; {}{}\n", name, type_string, unit_string, description_string);

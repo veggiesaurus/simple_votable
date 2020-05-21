@@ -247,7 +247,7 @@ bool Table::IsValid() const {
 void Table::PrintInfo(bool skip_unknowns) const {
     fmt::print("Rows: {}; Columns: {};\n", _num_rows, _columns.size());
     for (auto& column: _columns) {
-        if (!skip_unknowns || column->data_type != UNSUPPORTED) {
+        if (!skip_unknowns || column->data_type != UNKNOWN_TYPE) {
             cout << column->Info();
         }
     }

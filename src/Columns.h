@@ -17,12 +17,19 @@ template<class T>
 class DataColumn;
 
 enum DataType {
+    UNKNOWN_TYPE,
     STRING,
-    DOUBLE,
-    FLOAT_GENERIC,
+    UINT8,
+    INT8,
+    UINT16,
+    INT16,
+    UINT32,
+    INT32,
+    UINT64,
     INT64,
-    INT_GENERIC,
-    UNSUPPORTED
+    FLOAT,
+    DOUBLE,
+    BOOL
 };
 
 enum ComparisonOperator {
@@ -44,7 +51,7 @@ public:
     virtual void SetEmpty(size_t index) {};
     virtual void FillFromBuffer(const uint8_t* ptr, int num_rows, size_t stride) {};
     virtual void Resize(size_t capacity) {};
-    virtual size_t NumEntries() const { return 0; };
+    virtual size_t NumEntries() const { return 0; }
     virtual void SortIndices(IndexList& indices, bool ascending) const {};
     virtual void FilterIndices(IndexList& existing_indices, bool is_subset, ComparisonOperator comparison_operator, double value, double secondary_value = 0.0) const {}
     virtual std::string Info();
@@ -80,7 +87,7 @@ public:
     void FilterIndices(IndexList& existing_indices, bool is_subset, ComparisonOperator comparison_operator, double value, double secondary_value = 0.0) const override;
 
     static const DataColumn<T>* TryCast(const Column* column) {
-        if (!column || column->data_type == UNSUPPORTED) {
+        if (!column || column->data_type == UNKNOWN_TYPE) {
             return nullptr;
         }
         return dynamic_cast<const DataColumn<T>*>(column);
